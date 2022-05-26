@@ -56,6 +56,35 @@ static void printChidInfo(chid chid, char *message)
         ca_read_access(chid),ca_write_access(chid),ca_state(chid));
 }
 
+static void printChidInfo_taos(chid chid, char *message)
+{
+    //get time start
+    time_t rawtime;
+    struct tm *info;
+   char time_cur[40];
+ 
+   time( &rawtime );
+ 	
+   info = localtime( &rawtime );
+ 
+   strftime(time_cur, 80, "%Y-%m-%d %H:%M:%S", info);
+   	
+   //get time finish
+
+    char str1[100];
+    printf("\n%s\n",message);
+    sprintf(str1, "\'pv: %s  type(%d) nelements(%ld) host(%s) read(%d) write(%d) state(%d)\'",
+        ca_name(chid),ca_field_type(chid),ca_element_count(chid),
+        ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
+    
+    char str2[200];
+    sprintf(str2, "insert into status.%s values (\'%s\', %s);",ca_name(chid), time_cur, str1);
+    printf("str2: %s \n ", str2);
+
+    result = taos_query(taos,str2);
+    taos_free_result(result);  
+}
+
 static void exceptionCallback(struct exception_handler_args args)
 {
     chid        chid = args.chid;
@@ -75,11 +104,7 @@ static void connectionCallback(struct connection_handler_args args)
 {
     chid        chid = args.chid;
 	
-    printChidInfo(chid,"connectionCallback");
-    printf("ggggg");
-    /*char str[80];
-    sprintf(str, "insert into status.%s values (\'%s\', %s);",ca_name(eha.chid), time_cur, 	pdata);
-    printf("\n %s", str);*/
+    printChidInfo_taos(chid,"connectionCallback");
     
     /*
        how to send error info to 192.168.20.6(zhongkong ip)?by  ruizhe
