@@ -8,23 +8,19 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <taos.h>
+
 #include "cadef.h"
 #include "dbDefs.h"
 #include "epicsString.h"
 #include "cantProceed.h"
-#include <time.h>
-#include "fifo.h"
-//#include <windows.h> 
+
+#include <taos.h>//database
+#include <time.h>//time
+#include "fifo.h"//first in first out
+#include <unistd.h>
 //#include <iostream>
 //#include <queue>
-#include <epicsStdlib.h>
-#include <string.h>
-#include "epicsVersion.h"
 
-#include <epicsGetopt.h>
-
-#include "tool_lib.h"
 #define MAX_PV 1000
 #define MAX_PV_NAME_LEN 40
 
@@ -44,7 +40,7 @@ int show_all_info();
 TAOS* taos;
 TAOS_RES* result;
 queue * q;
-static unsigned long reqElems = 0;
+
 
 static void printChidInfo(chid chid, char *message)
 {
@@ -56,33 +52,50 @@ static void printChidInfo(chid chid, char *message)
         ca_read_access(chid),ca_write_access(chid),ca_state(chid));
 }
 
+
 static void printChidInfo_taos(chid chid, char *message)
 {
     //get time start
     time_t rawtime;
     struct tm *info;
-   char time_cur[40];
+   	char time_cur[40];
  
-   time( &rawtime );
+   	time( &rawtime );
  	
-   info = localtime( &rawtime );
+   	info = localtime( &rawtime );
  
-   strftime(time_cur, 80, "%Y-%m-%d %H:%M:%S", info);
+   	strftime(time_cur, 80, "%Y-%m-%d %H:%M:%S", info);
    	
-   //get time finish
+   	//get time finish
 
-    char str1[100];
-    printf("\n%s\n",message);
-    sprintf(str1, "\'pv: %s  type(%d) nelements(%ld) host(%s) read(%d) write(%d) state(%d)\'",
-        ca_name(chid),ca_field_type(chid),ca_element_count(chid),
-        ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
+    // char str1[100];
+    // printf("\n%s\n",message);
+    // sprintf(str1, "\'pv: %s  type(%d) nelements(%ld) host(%s) read(%d) write(%d) state(%d)\'",
+    //     ca_name(chid),ca_field_type(chid),ca_element_count(chid),
+    //     ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
     
-    char str2[200];
-    sprintf(str2, "insert into status.%s values (\'%s\', %s);",ca_name(chid), time_cur, str1);
-    printf("str2: %s \n ", str2);
+    char str[256];
+    //char str1[256];
+    
+    
+    // result = taos_query(taos, "create database if not exists status;");
+    // taos_free_result(result);
+    // usleep(100000);
+    // taos_select_db(taos, "status");
 
-    result = taos_query(taos,str2);
-    taos_free_result(result);  
+    // sprintf(str, "create table if not exists %s (ts TIMESTAMP, type INT, nelements BIGINT, host NCHAR(200), read INT, write INT, st INT);", ca_name(chid));
+    // //printf("str_ct: %s \n ", str_ct);
+    // sprintf(str1, "insert into status.%s values (\'%s\', %d, %ld, \'%s\', %d, %d, %d );",ca_name(chid), time_cur, ca_field_type(chid), ca_element_count(chid), ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
+    // //printf("str_iv: %s \n ", str_iv);
+    // strcat(str, str1);
+
+    sprintf(str, "insert into status.%s using status.pv_st tags(0) values (\'%s\', %d, %ld, \'%s\', %d, %d, %d );",ca_name(chid), time_cur, ca_field_type(chid), ca_element_count(chid), ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
+
+    printf("str: %s \n ", str);
+    result = taos_query(taos, str);
+    char* errstr = taos_errstr(result);
+    printf("query sql: %s \n query result: %s \n", str, errstr);
+    taos_free_result(result);    
 }
 
 static void exceptionCallback(struct exception_handler_args args)
@@ -103,8 +116,10 @@ static void exceptionCallback(struct exception_handler_args args)
 static void connectionCallback(struct connection_handler_args args)
 {
     chid        chid = args.chid;
-	
+
     printChidInfo_taos(chid,"connectionCallback");
+
+    
     
     /*
        how to send error info to 192.168.20.6(zhongkong ip)?by  ruizhe
@@ -124,8 +139,8 @@ static void accessRightsCallback(struct access_rights_handler_args args)
 static void eventCallback(struct event_handler_args eha)
 {
 
-        //get local time by  ruizhe
-        time_t rawtime;
+    //get local time by  ruizhe
+    time_t rawtime;
    	struct tm *info;
    	char time_cur[40];
  
@@ -136,46 +151,32 @@ static void eventCallback(struct event_handler_args eha)
    	strftime(time_cur, 80, "%Y-%m-%d %H:%M:%S", info);
    	
    	//get time finish
-
+   	
     chid        chid = eha.chid;
 
     if(eha.status!=ECA_NORMAL) {
         printChidInfo(chid,"eventCallback");
     } else {
-    	printf("\n\n\n\n\ntime now is \n ");
-    	
-    	printf("time now is:");
-    	if (eha.status == ECA_NORMAL){
-    	
-    	pv* pv = eha.usr;
-    	pv->dbrType = eha.type;
-        pv->nElems = eha.count;
-        pv->value = (void *) eha.dbr;
+        char    *pdata = (char *)eha.dbr; 
+        printf("Event Callback: %s = %s\n",ca_name(eha.chid),pdata);
         
-    	printf("begin...\n");
-    	print_time_val_sts(pv, reqElems);
-    	fflush(stdout);
-
-        pv->value = NULL;
-    	}else{
-    		printf("wrong!");
-    	}
-    	//printf("pv->charname : %s\n", eha->name);
-        printf("eha.dbr now = %s\n", eha.dbr);
-        printf("eha.dbr now = %p\n", eha.dbr);
-        printf("eha.dbr+1 now = %p\n", eha.dbr+1);
-        char    *pdata = (char *)eha.dbr;
-        printf("Event Callback: %s = %s\n", ca_name(eha.chid), pdata);
-        //printf("ca_message: %s = %s\n", ca_name(eha.chid), ca_message(eha.chid));
         
          	
-   	//insert sql by  ruizhe
-        char str[80];
-        sprintf(str, "insert into grz.%s values (\'%s\', %s);",ca_name(eha.chid), time_cur, pdata);
-        printf("\n %s", str);
-        
+   	    //insert sql by  ruizhe
+        char str[128];
+        // char str1[128];
+
+        // sprintf(str, "create table if not exists %s (ts TIMESTAMP, val INT); \n",ca_name(eha.chid));
+        // //printf("\n %s", str_ct);
+        // sprintf(str1, "insert into pvtest.%s values (\'%s\', %s); \n",ca_name(eha.chid), time_cur, pdata);
+        // // //printf("\n %s", str_iv);
+        // strcat(str, str1);
+        sprintf(str, "insert into pvs.%s using pvs.pv_val tags(0) values (\'%s\', %s); \n",ca_name(eha.chid), time_cur, pdata);
+
+        printf("str: %s \n ", str);
+
         info_t* message = (info_t*)malloc(sizeof(info_t));
-        sprintf(message->messge,  str);
+        sprintf(message->messge,  str);//send string to message 
         enque(q, (void *)message);
         
         
@@ -197,10 +198,21 @@ while(1){
     while((data = deque(q)) != NULL) {
         char * string = ((info_t *)data)->messge;
 //        printf("DeQued : %s, @%p\n", string, data);
-        printf("\n %s \n", string);
+        
+        
         printf("now is in thread: %d \n", *number);
+
+        // result = taos_query(taos, "create database if not exists pvtest;");
+        // taos_free_result(result);
+        // usleep(100000);
+        // taos_select_db(taos, "pvtest");
+
+        printf("\n %s \n", string);
         result = taos_query(taos,string);
-        taos_free_result(result);  
+        char* errstr = taos_errstr(result);
+        printf("query sql: %s \n query result: %s \n", string, errstr);
+        taos_free_result(result);
+          
         free(data);
     }
 }
@@ -220,7 +232,7 @@ int main(int argc,char **argv)
     int         npv = 0;
     MYNODE      *pmynode[MAX_PV];
     char        *pname[MAX_PV];
-    int         i;
+    int i;
     char        tempStr[MAX_PV_NAME_LEN];
     char        *pstr;
     FILE        *fp;
@@ -243,9 +255,9 @@ int main(int argc,char **argv)
     info = taos_get_client_info(taos);
     printf("client info: %s\n", info);
   
-  //taos connect end
+    //taos connect end
   
-  
+    //??
 	/*  change priority
     pthread_attr_t attr1;
     pthread_attr_init(&attr1);
@@ -257,11 +269,10 @@ int main(int argc,char **argv)
     */
     int arg[5];
     pthread_t threads[5];
-    for (int i=0;i<5;i++){
-	arg[i] = i;
-	//pthread_t tid; 
-	pthread_create(threads+i, NULL, thread_read, &arg[i]); 
-
+    for (i=0;i<5;i++){
+        arg[i] = i;
+        //pthread_t tid; 
+        pthread_create(threads+i, NULL, thread_read, &arg[i]); 
     }
 	
     if (argc != 2) {
@@ -289,6 +300,7 @@ int main(int argc,char **argv)
         npv++;
     }
     fclose(fp);
+
     SEVCHK(ca_context_create(ca_disable_preemptive_callback),"ca_context_create");
     SEVCHK(ca_add_exception_event(exceptionCallback,NULL),
         "ca_add_exception_event");
