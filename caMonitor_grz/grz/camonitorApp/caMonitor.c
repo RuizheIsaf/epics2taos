@@ -89,7 +89,7 @@ static void printChidInfo_taos(chid chid, char *message)
     // //printf("str_iv: %s \n ", str_iv);
     // strcat(str, str1);
 
-    sprintf(str, "insert into status.%s using status.pv_st tags(0) values (\'%s\', %d, %ld, \'%s\', %d, %d, %d );",ca_name(chid), time_cur, ca_field_type(chid), ca_element_count(chid), ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
+    sprintf(str, "insert into status.`%s` using status.pv_st tags(0) values (\'%s\', %d, %ld, \'%s\', %d, %d, %d );",ca_name(chid), time_cur, ca_field_type(chid), ca_element_count(chid), ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
 
     printf("str: %s \n ", str);
     result = taos_query(taos, str);
@@ -171,7 +171,7 @@ static void eventCallback(struct event_handler_args eha)
         // sprintf(str1, "insert into pvtest.%s values (\'%s\', %s); \n",ca_name(eha.chid), time_cur, pdata);
         // // //printf("\n %s", str_iv);
         // strcat(str, str1);
-        sprintf(str, "insert into pvs.%s using pvs.pv_val tags(0) values (\'%s\', %s); \n",ca_name(eha.chid), time_cur, pdata);
+        sprintf(str, "insert into pvs.`%s` using pvs.pv_val tags(0) values (\'%s\', %s); \n",ca_name(eha.chid), time_cur, pdata);
 
         printf("str: %s \n ", str);
 
