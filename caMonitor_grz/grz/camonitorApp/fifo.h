@@ -6,7 +6,7 @@
 #ifndef FIFO_H
 #define FIFO_H
 typedef struct info{
-    char messge[80];
+    char messge[512];  
     int data_len;
 }info_t;
 
