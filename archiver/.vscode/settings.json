@@ -1,0 +1,32 @@
+{
+    "files.associations": {
+        "archiver.h": "c",
+        "array": "c",
+        "string": "c",
+        "functional": "c",
+        "fifo.h": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "random": "c",
+        "epicsthread.h": "c",
+        "epicsmutex.h": "c",
+        "typeinfo": "c",
+        "sstream": "c",
+        "db_access.h": "c",
+        "tool_lib.h": "c",
+        "dbaccess.h": "c",
+        "cadef.h": "c",
+        "stddef.h": "c",
+        "defines.h": "c",
+        "stdlib.h": "c",
+        "epicsversion.h": "c",
+        "epicsgetopt.h": "c",
+        "string.h": "c",
+        "dbdefs.h": "c",
+        "headers.h": "c",
+        "taos.h": "c",
+        "epicsstdlib.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "Enabled"
+}

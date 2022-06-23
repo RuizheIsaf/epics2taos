@@ -1,11 +1,12 @@
-tool_lib.o: ../tool_lib.c /home/weibin/EPICS/epics-base/include/alarm.h \
+caMonitor.o: ../caMonitor.c \
+ /home/weibin/EPICS/epics-base/include/epicsStdlib.h \
  /home/weibin/EPICS/epics-base/include/shareLib.h \
- /home/weibin/EPICS/epics-base/include/epicsTime.h \
+ /home/weibin/EPICS/epics-base/include/os/Linux/osdStrtod.h \
  /home/weibin/EPICS/epics-base/include/epicsTypes.h \
  /home/weibin/EPICS/epics-base/include/compilerDependencies.h \
  /home/weibin/EPICS/epics-base/include/compiler/gcc/compilerSpecific.h \
- /home/weibin/EPICS/epics-base/include/os/Linux/osdTime.h \
- /home/weibin/EPICS/epics-base/include/epicsString.h \
+ /home/weibin/EPICS/epics-base/include/errMdef.h \
+ /home/weibin/EPICS/epics-base/include/epicsVersion.h \
  /home/weibin/EPICS/epics-base/include/cadef.h \
  /home/weibin/EPICS/epics-base/include/epicsThread.h \
  /home/weibin/EPICS/epics-base/include/os/Linux/osdThread.h \
@@ -16,4 +17,7 @@ tool_lib.o: ../tool_lib.c /home/weibin/EPICS/epics-base/include/alarm.h \
  /home/weibin/EPICS/epics-base/include/caerr.h \
  /home/weibin/EPICS/epics-base/include/db_access.h \
  /home/weibin/EPICS/epics-base/include/epicsTime.h \
- /home/weibin/EPICS/epics-base/include/caeventmask.h ../tool_lib.h
+ /home/weibin/EPICS/epics-base/include/os/Linux/osdTime.h \
+ /home/weibin/EPICS/epics-base/include/caeventmask.h \
+ /home/weibin/EPICS/epics-base/include/os/Linux/epicsGetopt.h \
+ ../tool_lib.h /home/weibin/EPICS/epics-base/include/epicsTime.h

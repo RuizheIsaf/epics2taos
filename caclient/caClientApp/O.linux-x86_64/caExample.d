@@ -1,4 +1,4 @@
-caMonitor.o: ../caMonitor.c /home/weibin/EPICS/epics-base/include/cadef.h \
+caExample.o: ../caExample.c /home/weibin/EPICS/epics-base/include/cadef.h \
  /home/weibin/EPICS/epics-base/include/epicsThread.h \
  /home/weibin/EPICS/epics-base/include/shareLib.h \
  /home/weibin/EPICS/epics-base/include/os/Linux/osdThread.h \
@@ -13,7 +13,4 @@ caMonitor.o: ../caMonitor.c /home/weibin/EPICS/epics-base/include/cadef.h \
  /home/weibin/EPICS/epics-base/include/db_access.h \
  /home/weibin/EPICS/epics-base/include/epicsTime.h \
  /home/weibin/EPICS/epics-base/include/os/Linux/osdTime.h \
- /home/weibin/EPICS/epics-base/include/caeventmask.h \
- /home/weibin/EPICS/epics-base/include/dbDefs.h \
- /home/weibin/EPICS/epics-base/include/epicsString.h \
- /home/weibin/EPICS/epics-base/include/cantProceed.h ../fifo.h
+ /home/weibin/EPICS/epics-base/include/caeventmask.h
