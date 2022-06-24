@@ -48,10 +48,14 @@ static void printChidInfo_taos(chid chid, char *message)
     char str[256];
     sprintf(str, "insert into status.`%s` using status.pv_st tags(0) values (\'%s\', %d, %ld, \'%s\', %d, %d, %d );",ca_name(chid), time_cur, ca_field_type(chid), ca_element_count(chid), ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
     printf("str: %s \n ", str);
+    /*-----------------------
+        将连接状态变化写入TDengine
     //result = taos_query(taos, str);
     //char* errstr = taos_errstr(result);
    // printf("query sql: %s \n query result: %s \n", str, errstr);
     //taos_free_result(result);    
+        数据库连接中断时自动重新连接（在独立的函数中实现。）
+    ------------------------------*/
 }
 
 static void exceptionCallback(struct exception_handler_args args)
@@ -95,6 +99,12 @@ static void eventCallback(struct event_handler_args eha)
         archive_pv(eha);   
     }
 }
+
+/*-----------------------
+     caMonitor模版的例子这里也是错的。
+     PV上线时才能得到正确的类型信息，把订阅功能放在connectionCallback里可以连接启动时不在线的PV。
+     当PV的类型改变后，比如认为修改了IOC后重启。。程序能以正确的类型进行订阅。
+------------------------*/
 
 static void connectionCallback(struct connection_handler_args args)
 {
@@ -189,7 +199,7 @@ int main(int argc,char **argv)
     fclose(fp);
     Archiver->nodelist = pmynode;
     printf("Setup monitor!\n");
-    start_archive_thread(Archiver);
+    start_archive_thread(Archiver);          //启动读取线程，将fifo中的数据读出来写入TDengine
 
     printf("archiver thread started!\n");
     SEVCHK(ca_context_create(ca_disable_preemptive_callback),"ca_context_create");

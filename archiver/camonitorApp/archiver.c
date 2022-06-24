@@ -38,6 +38,13 @@ ARCHIVER*  archive_initial()
     return archiver;
 }
 
+
+
+/*----------------------------
+    注意： caMonotor模板是错的。不能把eha.dbr直接转成char*（调试时看每子节的数据时可以用）！
+    eha.dbr是一个结构体指针，根据eha.type的不同为不同的类型。
+    要用如下的方法来操作。
+-----------------------------*/
 ARCHIVE_ERROR archive_pv(evargs eha)
 {
     ARCHIVE_ELEMENT newdata;
@@ -49,7 +56,11 @@ ARCHIVE_ERROR archive_pv(evargs eha)
    
     if(fifoWrite(Archiver->ring_buffer, newdata)==FIFO_OK)
     {
-        //epicsMutexUnlock(Archiver->ring_buffer->readLock);  
+        //epicsMutexUnlock(Archiver->ring_buffer->readLock);
+
+        /*-----------
+        EPICS的互斥锁只能在同一个线程里成对使用。不能一个线程锁后在另一线程里解锁。上面这么写是错的
+        -------------*/  
     } 
     else
     {
@@ -66,7 +77,7 @@ void archive_thread(ARCHIVER *parchiver)
     char str[256];
     while (true)
     {
-        epicsMutexMustLock(Archiver->ring_buffer->readLock);
+        //epicsMutexMustLock(Archiver->ring_buffer->readLock);
         if(fifoRead(Archiver->ring_buffer, &data)!= FIFO_EMPTY)
         {    
             printf("-----------------------\n");
@@ -75,12 +86,15 @@ void archive_thread(ARCHIVER *parchiver)
             printf("new value is %s\n",val2str (data.data, data.type,0));
             printf("%s\n",dbr2str (data.data, data.type));
             printf("-----------------------\n");
-        //-------------这里增加写入TDengine的代码----------------
+        /*-------------这里增加写入TDengine的代码----------------
             //result = taos_query(Archiver->taos,str);
             //char* errstr = taos_errstr(result);
             //printf("query sql: %s \n query result: %s \n", str, errstr);
             //taos_free_result(result);
-        //----------------------------------------------------
+
+            要求：1. 数据库连接中断时可以自动重新连接
+                 2. 把时间戳、警报状态也一起存储.(具体获得方法展开dbr2str里查看）
+        //----------------------------------------------------*/
         }
         else
         {
@@ -101,6 +115,21 @@ ARCHIVE_ERROR start_archive_thread(ARCHIVER *archiver)
 }
 
 
+
+/*-------------------
+    环形缓存（Ring Buffer）
+    好处：1.不需反复申请和注销内存
+         2.速度快
+         3.消费线程卡死时，不会导致缓存空间无限增大
+
+    BUG：PV连接非常多时，偶尔会有一些PV被写入两次。可能是camonitor机制本身的问题，也可能是缓存一致性的问题。
+         似乎不会丢失数据
+
+    待改进：
+         可以用EPICS的时间机制代替第81行的判断。
+          
+---------------------*/
+
 fifo_error fifoInitial(FIFO * fifo,int fifo_size)
 {
     
@@ -118,7 +147,7 @@ fifo_error fifoInitial(FIFO * fifo,int fifo_size)
     fifo->write_position=0;
     fifo->max_size=fifo_size;
     fifo->fifoLock = epicsMutexMustCreate();
-    fifo->readLock = epicsMutexMustCreate();
+    //fifo->readLock = epicsMutexMustCreate();
   
     if (fifo->fifoLock==0)
     {

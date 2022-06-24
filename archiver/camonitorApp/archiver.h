@@ -25,7 +25,7 @@ typedef struct{
 } MYNODE;
 
 typedef struct{
-    char		    pvname[20];
+    char		    pvname[40];
     long            type;   /* type of pv */ 
     long            count;  /* the element count of the item return*/
     char            data[MAX_DATA_LENGTH];         /* value of the pv */
@@ -41,8 +41,12 @@ typedef struct
     epicsMutexId readLock;   
 }FIFO;
 
-
-typedef struct{
+/*--------------
+       全局变量，存储缓存指针、数据库连接指针、pv列表和一些统计信息
+       -需要增加的全局状态信息可以放在这个里面
+       -利用此结构体可以访问所有的PV
+----------------*/
+typedef struct{          
     long            data_rate;   /* the element count of the item return*/
     time_t          lastest_update_times;    /*pv time stamp */
     long            connected_pvs;     
