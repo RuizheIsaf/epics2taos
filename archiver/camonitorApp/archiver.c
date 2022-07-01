@@ -83,9 +83,10 @@ void archive_thread(ARCHIVER *parchiver)
             printf("-----------------------\n");
             printf("archive thread called\n");
             printf("pvname: %s\n",data.pvname);
+            //printf("testype: %s\n",data.type);
             printf("new value is %s\n",val2str (data.data, data.type,0));
-            printf("%s\n",dbr2str (data.data, data.type));
-            printf("-----------------------\n");
+            //printf("%s\n",dbr2str (data.data, data.type));
+            
         /*-------------这里增加写入TDengine的代码----------------
             //result = taos_query(Archiver->taos,str);
             //char* errstr = taos_errstr(result);
@@ -93,8 +94,27 @@ void archive_thread(ARCHIVER *parchiver)
             //taos_free_result(result);
 
             要求：1. 数据库连接中断时可以自动重新连接
-                 2. 把时间戳、警报状态也一起存储.(具体获得方法展开dbr2str里查看）
+                 2. 把时间戳、警报状态也一起存储.(具体获得方法展开dbr2str里查看）    
         //----------------------------------------------------*/
+            
+            char* pvname = malloc(50);
+            strcpy(pvname, "`");
+            strcat(pvname, data.pvname);
+            strcat(pvname, "`");
+            //printf("pvname: %s\n", pvname);
+            
+            char* sql;
+            sql = dbr2str (data.data, data.type);
+            str_replace(sql, "pv_name", pvname);
+            str_replace(sql, "pv_value", val2str (data.data, data.type,0));
+            //printf("sql: %s\n", sql);
+            
+            result = taos_query(Archiver->taos, sql);
+            char* errstr = taos_errstr(result);
+            printf("query sql: %s \n query result: %s \n", sql, errstr);
+            printf("-----------------------\n");
+            taos_free_result(result);
+            
         }
         else
         {
@@ -139,7 +159,7 @@ fifo_error fifoInitial(FIFO * fifo,int fifo_size)
 
     if (fifo->buff==NULL)
     {
-        printf("calloc erroe!\n");
+        printf("calloc error!\n");
         return FIFO_ERROR;
     }
     
@@ -169,7 +189,7 @@ fifo_error fifoWrite(FIFO *fifo, ARCHIVE_ELEMENT data)
     printf("-----------------------\n");
     printf("fifo write called\n");
     printf("pvname: %s\n",fifo->buff->pvname);
-    printf("input index: %d, outpit index: %d\n", in ,out);
+    printf("input index: %d, output index: %d\n", in ,out);
     printf("new value is %s\n",val2str (fifo->buff[in].data, data.type,0));
     printf("-----------------------\n");
 
@@ -225,10 +245,49 @@ fifo_error fifoRead(FIFO *fifo, ARCHIVE_ELEMENT *data )
         }
     printf("-----------------------\n");
     printf("fifo read called\n");
-    printf("input index: %d, outpit index: %d\n", in ,out);
+    printf("input index: %d, output index: %d\n", in ,out);
     printf("read value is %s\n",val2str (data->data, data->type,0));
     printf("-----------------------\n");
     }
     epicsMutexUnlock(fifo->fifoLock);
     return rtn;
 }
+
+void str_replace(char * str1, char * str2, char * str3){
+    int i, j, k, done, count = 0, gap = 0;
+    char temp[300];
+    for(i = 0; i < strlen(str1); i += gap){
+        if(str1[i] == str2[0]){
+            done = 0;
+            for(j = i, k = 0; k < strlen(str2); j++, k++){
+                if(str1[j] != str2[k]){
+                    done = 1;
+                    gap = k;
+                    break;
+                }
+            }
+            if(done == 0){ // 已找到待替换字符串并替换
+                for(j = i + strlen(str2), k = 0; j < strlen(str1); j++, k++){ // 保存原字符串中剩余的字符
+                    temp[k] = str1[j];
+                }
+                temp[k] = '\0'; // 将字符数组变成字符串
+                for(j = i, k = 0; k < strlen(str3); j++, k++){ // 字符串替换
+                    str1[j] = str3[k];
+                    count++;
+                }
+                for(k = 0; k < strlen(temp); j++, k++){ // 剩余字符串回接
+                    str1[j] = temp[k];
+                }
+                str1[j] = '\0'; // 将字符数组变成字符串
+                gap = strlen(str2);
+            }
+        }else{
+            gap = 1;
+        }
+    }
+    if(count == 0){
+        printf("Can't find the replaced string!\n");
+    }
+    return;
+}
+
