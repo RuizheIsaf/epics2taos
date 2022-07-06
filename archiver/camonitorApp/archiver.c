@@ -97,24 +97,60 @@ void archive_thread(ARCHIVER *parchiver)
                  2. 把时间戳、警报状态也一起存储.(具体获得方法展开dbr2str里查看）    
         //----------------------------------------------------*/
             
-            char* pvname = malloc(50);
-            strcpy(pvname, "`");
-            strcat(pvname, data.pvname);
-            strcat(pvname, "`");
-            //printf("pvname: %s\n", pvname);
+            // char* pvname = malloc(50);
+            // strcpy(pvname, "`");
+            // strcat(pvname, data.pvname);
+            // strcat(pvname, "`");
+            // //printf("pvname: %s\n", pvname);
             
-            char* sql;
-            sql = dbr2str (data.data, data.type);
-            str_replace(sql, "pv_name", pvname);
-            str_replace(sql, "pv_value", val2str (data.data, data.type,0));
-            //printf("sql: %s\n", sql);
+            // char* sql;
+            // sql = dbr2str (data.data, data.type);
+            // str_replace(sql, "pv_name", pvname);
+            // //str_replace(sql, "st_name", pvname);
+            // str_replace(sql, "pv_value", val2str (data.data, data.type,0));
+            // //str_replace(sql, "st_value", "1");
+            // //printf("sql: %s\n", sql);
             
-            result = taos_query(Archiver->taos, sql);
-            char* errstr = taos_errstr(result);
-            printf("query sql: %s \n query result: %s \n", sql, errstr);
-            printf("-----------------------\n");
+            // result = taos_query(Archiver->taos, sql);
+            // char* errstr = taos_errstr(result);
+            // printf("query sql: %s \n query result: %s \n", sql, errstr);
+            // printf("-----------------------\n");
+            // taos_free_result(result);
+
+
+            //分割dbr2str输出的字符串，其输出的格式为“%s,%s,%s”，用","作为分隔符分割得到三个字符串分别为timestamp，stauts和severity
+            char* dbrstr = dbr2str (data.data, data.type);
+            char* buf[3], *p;
+            int i = 0;
+            p = NULL;
+            p = strtok(dbrstr, ",");
+            while(p) {
+                buf[i] = p;
+                i++;
+                p = strtok(NULL, ",");
+            }
+            //将分割好的字符串分别赋值给ts, status, severity
+            char* ts = buf[0];
+            char* status = buf[1];
+            char* severity = buf[2];
+            char* value = val2str (data.data, data.type,0);
+
+            //printf(dbr2str (data.data, data.type));
+            //准备sql语句并往tdengine里写入数据，sql1插入数值变化，sql2插入状态变化
+            char sql1[256];
+            char sql2[256];
+            char* errstr;
+            sprintf(sql1, "insert into pvs.`%s` using pvs.pv tags(0) values (\'%s\', \'%s\', \'%s\', \'%s\'); \n ", data.pvname, ts, value, status, severity);
+            result = taos_query(Archiver->taos, sql1);
+            errstr = taos_errstr(result);
+            printf("query sql: %s \n query result: %s \n", sql1, errstr);
             taos_free_result(result);
-            
+            sprintf(sql2, "insert into status.`%s` using status.st tags(0) values (\'%s\', 1) \n" , data.pvname, ts);
+            result = taos_query(Archiver->taos, sql2);
+            errstr = taos_errstr(result);
+            printf("query sql: %s \n query result: %s \n", sql2, errstr);
+            taos_free_result(result);
+            printf("-----------------------\n");
         }
         else
         {
