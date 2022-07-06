@@ -11,6 +11,8 @@
 #include <cadef.h>
 #include <epicsGetopt.h>
 #include "archiver.h"
+#include <epicsTime.h>
+#include <epicsString.h>
 
 
 #define VALID_DOUBLE_DIGITS 18  /* Max usable precision for a double */
@@ -38,24 +40,29 @@ static void printChidInfo_taos(chid chid, char *message)
     time_t rawtime;
     struct tm *info;
    	char time_cur[40];
-    //TAOS_RES* result;
+    TAOS_RES* result;
    	time( &rawtime );
  	
    	info = localtime( &rawtime );
  
    	strftime(time_cur, 80, "%Y-%m-%d %H:%M:%S", info);
    	
-    char str[256];
-    sprintf(str, "insert into status.`%s` using status.pv_st tags(0) values (\'%s\', %d, %ld, \'%s\', %d, %d, %d );",ca_name(chid), time_cur, ca_field_type(chid), ca_element_count(chid), ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
-    printf("str: %s \n ", str);
+    char sql[256];
+    sprintf(sql, "insert into status.`%s` using status.pv_st tags(0) values (\'%s\', %d, %ld, \'%s\', %d, %d, %d );",ca_name(chid), time_cur, ca_field_type(chid), ca_element_count(chid), ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
+    printf("sql: %s \n ", sql);
     /*-----------------------
         将连接状态变化写入TDengine
-    //result = taos_query(taos, str);
-    //char* errstr = taos_errstr(result);
-   // printf("query sql: %s \n query result: %s \n", str, errstr);
-    //taos_free_result(result);    
+    result = taos_query(taos, str);
+    char* errstr = taos_errstr(result);
+   printf("query sql: %s \n query result: %s \n", str, errstr);
+    taos_free_result(result);    
         数据库连接中断时自动重新连接（在独立的函数中实现。）
     ------------------------------*/
+    // result = taos_query(Archiver->taos, sql);
+    // char* errstr = taos_errstr(result);
+    // printf("query sql: %s \n query result: %s \n", sql, errstr);
+    // taos_free_result(result);    
+    // free(sql);
 }
 
 static void exceptionCallback(struct exception_handler_args args)
@@ -98,6 +105,7 @@ static void eventCallback(struct event_handler_args eha)
         //pv->value = NULL;
         archive_pv(eha);   
     }
+    
 }
 
 /*-----------------------
@@ -109,7 +117,7 @@ static void eventCallback(struct event_handler_args eha)
 static void connectionCallback(struct connection_handler_args args)
 {
     pv *ppv = ( pv * ) ca_puser ( args.chid );
-    if (args.op == CA_OP_CONN_UP ) {
+    if (args.op == CA_OP_CONN_UP ) {//连接恢复时
         nConn++;
 
         if (ppv->onceConnected && ppv->dbfType != ca_field_type(ppv->chid)) {
@@ -149,10 +157,29 @@ static void connectionCallback(struct connection_handler_args args)
                                                 &ppv->evid);
         }
     }
-    else if ( args.op == CA_OP_CONN_DOWN ) {
+    else if ( args.op == CA_OP_CONN_DOWN ) {//连接断开时
+        
         nConn--;
         ppv->status = ECA_DISCONN;
         print_time_val_sts(ppv, reqElems);
+
+        //获取时间戳
+        char timeText[58];
+        char timeFormatStr[30] = "%Y-%m-%d %H:%M:%S.%06f";
+        epicsTimeStamp tsNow;
+        epicsTimeGetCurrent(&tsNow);
+        epicsTimeToStrftime(timeText, 28, timeFormatStr, &tsNow);
+
+        //准备插入数据的sql
+        char sql[256];
+        char* errstr;
+        sprintf(sql, "insert into status.`%s` using status.st tags(0) values (\'%s\', 0) \n" , ppv->name, timeText);
+        TAOS_RES* result;
+        result = taos_query(Archiver->taos, sql);
+        errstr = taos_errstr(result);
+        printf("query sql: %s \n query result: %s \n", sql, errstr);
+        taos_free_result(result);
+        
     }
 
 }
