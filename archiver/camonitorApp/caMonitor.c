@@ -92,10 +92,14 @@ static void accessRightsCallback(struct access_rights_handler_args args)
 static void eventCallback(struct event_handler_args eha)
 {
     pv* pv = eha.usr;
-
+    //--------------------------------------
+    //通过这个pv指针，可以用来存储特定pv通道的统计信息
+    //--------------------------------------
+    
     pv->status = eha.status;
     if (eha.status == ECA_NORMAL)
     {
+        pv->callbackCounts++;          
         //pv->dbrType = eha.type;
         //pv->nElems = eha.count;
         //pv->value = (void *) eha.dbr;    /* casting away const */
@@ -155,6 +159,15 @@ static void connectionCallback(struct connection_handler_args args)
                                                 eventCallback,
                                                 (void*)ppv,
                                                 &ppv->evid);
+
+        //*******************
+        //如果这些都成功了，也往数据库里写一条数据。
+        //PV上线和下线都在数据库里进行记录
+        //*******************
+        //-----------------
+        //注意！如果一段代码在超过一个地方调用，那么请单独封装成一个函数。否则在修改时，你就需要同时修改多个地方。
+        //------------------
+        PVStatus2TD(Archiver->taos,ppv);          
         }
     }
     else if ( args.op == CA_OP_CONN_DOWN ) {//连接断开时
@@ -162,24 +175,7 @@ static void connectionCallback(struct connection_handler_args args)
         nConn--;
         ppv->status = ECA_DISCONN;
         print_time_val_sts(ppv, reqElems);
-
-        //获取时间戳
-        char timeText[58];
-        char timeFormatStr[30] = "%Y-%m-%d %H:%M:%S.%06f";
-        epicsTimeStamp tsNow;
-        epicsTimeGetCurrent(&tsNow);
-        epicsTimeToStrftime(timeText, 28, timeFormatStr, &tsNow);
-
-        //准备插入数据的sql
-        char sql[256];
-        char* errstr;
-        sprintf(sql, "insert into status.`%s` using status.st tags(0) values (\'%s\', 0) \n" , ppv->name, timeText);
-        TAOS_RES* result;
-        result = taos_query(Archiver->taos, sql);
-        errstr = taos_errstr(result);
-        printf("query sql: %s \n query result: %s \n", sql, errstr);
-        taos_free_result(result);
-        
+        PVStatus2TD(Archiver->taos,ppv);
     }
 
 }
@@ -201,6 +197,7 @@ int main(int argc,char **argv)
 
     Archiver = archive_initial();
     printf("archiver initilized!\n");
+    syslog(LOG_USER|LOG_INFO,"archiver initilized!\n"); 
     
     if (argc != 2) {
         fprintf(stderr,"usage: caMonitor filename\n");
@@ -225,10 +222,14 @@ int main(int argc,char **argv)
     }
     fclose(fp);
     Archiver->nodelist = pmynode;
+    Archiver->nPv = npv;
     printf("Setup monitor!\n");
+    syslog(LOG_USER|LOG_INFO,"Setup monitor!\n"); 
     start_archive_thread(Archiver);          //启动读取线程，将fifo中的数据读出来写入TDengine
 
     printf("archiver thread started!\n");
+    syslog(LOG_USER|LOG_INFO,"archiver thread started!\n"); 
+    
     SEVCHK(ca_context_create(ca_disable_preemptive_callback),"ca_context_create");
     SEVCHK(ca_add_exception_event(exceptionCallback,NULL),
         "ca_add_exception_event");

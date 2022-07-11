@@ -8,6 +8,7 @@
 #include <cantProceed.h>
 
 #include "archiver.h"
+#include "time.h"
 
 
 ARCHIVER*  archive_initial()
@@ -23,18 +24,7 @@ ARCHIVER*  archive_initial()
     const char* host = "127.0.0.1";
     const char* user = "root";
     const char* passwd = "taosdata";
-
-    taos_options(TSDB_OPTION_TIMEZONE, "GMT-8");
-    archiver->taos = taos_connect(host, user, passwd, "", 0);
-    if (archiver->taos == NULL) {
-      printf("\033[31mfailed to connect to db, reason:%s\033[0m\n", taos_errstr(archiver->taos));
-      exit(1);
-    }else{printf("successful!!!");}
-    char* info = taos_get_server_info(archiver->taos);
-    printf("server info: %s\n", info);
-    info = taos_get_client_info(archiver->taos);
-    printf("client info: %s\n", info);
-
+    archiver->taos= TaosConnect(host, user, passwd);
     return archiver;
 }
 
@@ -57,7 +47,6 @@ ARCHIVE_ERROR archive_pv(evargs eha)
     if(fifoWrite(Archiver->ring_buffer, newdata)==FIFO_OK)
     {
         //epicsMutexUnlock(Archiver->ring_buffer->readLock);
-
         /*-----------
         EPICS的互斥锁只能在同一个线程里成对使用。不能一个线程锁后在另一线程里解锁。上面这么写是错的
         -------------*/  
@@ -73,20 +62,19 @@ void archive_thread(ARCHIVER *parchiver)
 { 
     //ARCHIVER *archiver = parchiver;
     ARCHIVE_ELEMENT data;
-    TAOS_RES* result;
-    char str[256];
+    
     while (true)
     {
         //epicsMutexMustLock(Archiver->ring_buffer->readLock);
         if(fifoRead(Archiver->ring_buffer, &data)!= FIFO_EMPTY)
         {    
+            #ifdef DEBUG
             printf("-----------------------\n");
             printf("archive thread called\n");
             printf("pvname: %s\n",data.pvname);
             //printf("testype: %s\n",data.type);
             printf("new value is %s\n",val2str (data.data, data.type,0));
-            //printf("%s\n",dbr2str (data.data, data.type));
-            
+            #endif         
         /*-------------这里增加写入TDengine的代码----------------
             //result = taos_query(Archiver->taos,str);
             //char* errstr = taos_errstr(result);
@@ -96,61 +84,7 @@ void archive_thread(ARCHIVER *parchiver)
             要求：1. 数据库连接中断时可以自动重新连接
                  2. 把时间戳、警报状态也一起存储.(具体获得方法展开dbr2str里查看）    
         //----------------------------------------------------*/
-            
-            // char* pvname = malloc(50);
-            // strcpy(pvname, "`");
-            // strcat(pvname, data.pvname);
-            // strcat(pvname, "`");
-            // //printf("pvname: %s\n", pvname);
-            
-            // char* sql;
-            // sql = dbr2str (data.data, data.type);
-            // str_replace(sql, "pv_name", pvname);
-            // //str_replace(sql, "st_name", pvname);
-            // str_replace(sql, "pv_value", val2str (data.data, data.type,0));
-            // //str_replace(sql, "st_value", "1");
-            // //printf("sql: %s\n", sql);
-            
-            // result = taos_query(Archiver->taos, sql);
-            // char* errstr = taos_errstr(result);
-            // printf("query sql: %s \n query result: %s \n", sql, errstr);
-            // printf("-----------------------\n");
-            // taos_free_result(result);
-
-
-            //分割dbr2str输出的字符串，其输出的格式为“%s,%s,%s”，用","作为分隔符分割得到三个字符串分别为timestamp，stauts和severity
-            char* dbrstr = dbr2str (data.data, data.type);
-            char* buf[3], *p;
-            int i = 0;
-            p = NULL;
-            p = strtok(dbrstr, ",");
-            while(p) {
-                buf[i] = p;
-                i++;
-                p = strtok(NULL, ",");
-            }
-            //将分割好的字符串分别赋值给ts, status, severity
-            char* ts = buf[0];
-            char* status = buf[1];
-            char* severity = buf[2];
-            char* value = val2str (data.data, data.type,0);
-
-            //printf(dbr2str (data.data, data.type));
-            //准备sql语句并往tdengine里写入数据，sql1插入数值变化，sql2插入状态变化
-            char sql1[256];
-            char sql2[256];
-            char* errstr;
-            sprintf(sql1, "insert into pvs.`%s` using pvs.pv tags(0) values (\'%s\', \'%s\', \'%s\', \'%s\'); \n ", data.pvname, ts, value, status, severity);
-            result = taos_query(Archiver->taos, sql1);
-            errstr = taos_errstr(result);
-            printf("query sql: %s \n query result: %s \n", sql1, errstr);
-            taos_free_result(result);
-            sprintf(sql2, "insert into status.`%s` using status.st tags(0) values (\'%s\', 1) \n" , data.pvname, ts);
-            result = taos_query(Archiver->taos, sql2);
-            errstr = taos_errstr(result);
-            printf("query sql: %s \n query result: %s \n", sql2, errstr);
-            taos_free_result(result);
-            printf("-----------------------\n");
+             Pv2TD(Archiver->taos, data);
         }
         else
         {
@@ -166,11 +100,47 @@ ARCHIVE_ERROR start_archive_thread(ARCHIVER *archiver)
 		10000, (EPICSTHREADFUNC*)archive_thread, (void *)Archiver)
 		== (epicsThreadId) 0) {
 		printf ("ArchiverTask spawn error\n");
+        syslog(LOG_USER|LOG_INFO,"ArchiverTask spawn error\n"); 
 		return -1;
 	}
 }
 
+ARCHIVE_ERROR archiver_monitor_thread(ARCHIVER *archiver)
+{
+    pv * pvlisthead;
+    int npv = archiver->nPv;
+    int callBackCounts=0;
+    pvlisthead = Archiver->nodelist;
+    int i;
 
+    while (true)
+    {
+        //*************************************************************************
+        //将数据采集进程的状态写入数据库。。上层软件可以可以根据这个统计信息了解数据采集进程的状态。
+        //这个也作为采集系统的心跳。。如果心跳数据不正常。。上层软件可以通过管理程序重启采集进程
+        //**************************************************************************
+
+        for (i = 0; i < npv; i++)
+        {
+            callBackCounts += pvlisthead[i].callbackCounts;          //这就是所有pv总的回调次数。。利用类似的机制可以统计数据采集整体状态
+        }
+        sleep(10000); //等待10秒
+    }
+    
+}
+
+ARCHIVE_ERROR start_archiver_monitor(ARCHIVER *archiver)
+{
+        printf("start_archiver_monitor_thread called\n");
+    if (epicsThreadCreate("ArchiverMonitorTask", epicsThreadPriorityHigh,
+		10000, (EPICSTHREADFUNC*)archiver_monitor_thread, (void *)Archiver)
+		== (epicsThreadId) 0) {
+		printf ("ArchiverTask spawn error\n");
+        syslog(LOG_USER|LOG_INFO,"ArchiverMonitorTask spawn error\n"); 
+		return -1;
+	}
+
+}
 
 /*-------------------
     环形缓存（Ring Buffer）
@@ -186,108 +156,6 @@ ARCHIVE_ERROR start_archive_thread(ARCHIVER *archiver)
           
 ---------------------*/
 
-fifo_error fifoInitial(FIFO * fifo,int fifo_size)
-{
-    
-    printf("setup buff\n");
-    //fifo->buff = (ARCHIVE_ELEMENT *) mallocMustSucceed(fifo_size, sizeof(ARCHIVE_ELEMENT));
-    printf("setup buff\n");
-
-    if (fifo->buff==NULL)
-    {
-        printf("calloc error!\n");
-        return FIFO_ERROR;
-    }
-    
-    fifo->read_position=0;
-    fifo->write_position=0;
-    fifo->max_size=fifo_size;
-    fifo->fifoLock = epicsMutexMustCreate();
-    //fifo->readLock = epicsMutexMustCreate();
-  
-    if (fifo->fifoLock==0)
-    {
-       printf("faild to create mutex!\n");
-       return FIFO_ERROR;
-    }
-    return FIFO_OK;
-}
-
-
-fifo_error fifoWrite(FIFO *fifo, ARCHIVE_ELEMENT data)
-{  
-    epicsMutexMustLock(fifo->fifoLock);
-    fifo_error rtn;
-    int in=fifo->write_position;
-    int out = fifo->read_position;
-    fifo->buff[in]=data;
-
-    printf("-----------------------\n");
-    printf("fifo write called\n");
-    printf("pvname: %s\n",fifo->buff->pvname);
-    printf("input index: %d, output index: %d\n", in ,out);
-    printf("new value is %s\n",val2str (fifo->buff[in].data, data.type,0));
-    printf("-----------------------\n");
-
-    if (in == fifo->max_size - 1 )
-    {
-        fifo->write_position = 0;
-        rtn = FIFO_OK;
-    }
-    if (in < fifo->max_size - 1 )
-    {
-        fifo->write_position= in+1;
-        rtn = FIFO_OK;
-    }
-    if (in > fifo->max_size - 1 )
-    {
-        fifo->write_position=in+1;
-        rtn = FIFO_ERROR;
-    }
-    epicsMutexUnlock(fifo->fifoLock);
-    return rtn;
-}
-
-fifo_error fifoRead(FIFO *fifo, ARCHIVE_ELEMENT *data )
-{
-    epicsMutexMustLock(fifo->fifoLock);
-    int in = fifo->write_position;
-    int out = fifo->read_position;
-    fifo_error rtn;
-    
-    //printf("fifo write called\n");
-
-    if (out == in)
-    {
-        rtn = FIFO_EMPTY;
-    }
-    else
-    {
-        memcpy(data,fifo->buff+out, sizeof(ARCHIVE_ELEMENT));
-
-        if (out == fifo->max_size - 1)
-        {
-            fifo->read_position = 0;
-            rtn = FIFO_OK;
-        }
-        if (out < fifo->max_size - 1)
-        {
-            fifo->read_position = out +1;
-            rtn = FIFO_OK;
-        }
-         if (out > fifo->max_size - 1)
-        {
-            rtn = FIFO_ERROR;
-        }
-    printf("-----------------------\n");
-    printf("fifo read called\n");
-    printf("input index: %d, output index: %d\n", in ,out);
-    printf("read value is %s\n",val2str (data->data, data->type,0));
-    printf("-----------------------\n");
-    }
-    epicsMutexUnlock(fifo->fifoLock);
-    return rtn;
-}
 
 void str_replace(char * str1, char * str2, char * str3){
     int i, j, k, done, count = 0, gap = 0;

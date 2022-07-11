@@ -26,7 +26,9 @@
         "dbdefs.h": "c",
         "headers.h": "c",
         "taos.h": "c",
-        "epicsstdlib.h": "c"
+        "epicsstdlib.h": "c",
+        "taos_interface.h": "c",
+        "syslog.h": "c"
     },
-    "C_Cpp.errorSquiggles": "Enabled"
+    "C_Cpp.errorSquiggles": "Disabled"
 }

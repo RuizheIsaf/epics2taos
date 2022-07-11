@@ -24,4 +24,5 @@ caMonitor.o: ../caMonitor.c \
  /home/weibin/EPICS/epics-base/include/epicsAssert.h \
  /home/weibin/EPICS/epics-base/include/os/Linux/osdMutex.h \
  /home/weibin/EPICS/epics-base/include/epicsThread.h ../tool_lib.h \
- /home/weibin/EPICS/epics-base/include/epicsTime.h
+ /home/weibin/EPICS/epics-base/include/epicsTime.h ../fifo.h \
+ ../taos_interface.h /home/weibin/EPICS/epics-base/include/epicsString.h
