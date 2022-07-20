@@ -34,36 +34,36 @@ static void printChidInfo(chid chid, char *message)
 }
 
 
-static void printChidInfo_taos(chid chid, char *message)
-{
-    //get time start
-    time_t rawtime;
-    struct tm *info;
-   	char time_cur[40];
-    TAOS_RES* result;
-   	time( &rawtime );
+// static void printChidInfo_taos(chid chid, char *message)
+// {
+//     //get time start
+//     time_t rawtime;
+//     struct tm *info;
+//    	char time_cur[40];
+//     TAOS_RES* result;
+//    	time( &rawtime );
  	
-   	info = localtime( &rawtime );
+//    	info = localtime( &rawtime );
  
-   	strftime(time_cur, 80, "%Y-%m-%d %H:%M:%S", info);
+//    	strftime(time_cur, 80, "%Y-%m-%d %H:%M:%S", info);
    	
-    char sql[256];
-    sprintf(sql, "insert into status.`%s` using status.pv_st tags(0) values (\'%s\', %d, %ld, \'%s\', %d, %d, %d );",ca_name(chid), time_cur, ca_field_type(chid), ca_element_count(chid), ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
-    printf("sql: %s \n ", sql);
-    /*-----------------------
-        将连接状态变化写入TDengine
-    result = taos_query(taos, str);
-    char* errstr = taos_errstr(result);
-   printf("query sql: %s \n query result: %s \n", str, errstr);
-    taos_free_result(result);    
-        数据库连接中断时自动重新连接（在独立的函数中实现。）
-    ------------------------------*/
-    // result = taos_query(Archiver->taos, sql);
-    // char* errstr = taos_errstr(result);
-    // printf("query sql: %s \n query result: %s \n", sql, errstr);
-    // taos_free_result(result);    
-    // free(sql);
-}
+//     char sql[256];
+//     sprintf(sql, "insert into status.`%s` using status.pv_st tags(0) values (\'%s\', %d, %ld, \'%s\', %d, %d, %d );",ca_name(chid), time_cur, ca_field_type(chid), ca_element_count(chid), ca_host_name(chid), ca_read_access(chid),ca_write_access(chid),ca_state(chid));
+//     printf("sql: %s \n ", sql);
+//     /*-----------------------
+//         将连接状态变化写入TDengine
+//     result = taos_query(taos, str);
+//     char* errstr = taos_errstr(result);
+//    printf("query sql: %s \n query result: %s \n", str, errstr);
+//     taos_free_result(result);    
+//         数据库连接中断时自动重新连接（在独立的函数中实现。）
+//     ------------------------------*/
+//     // result = taos_query(Archiver->taos, sql);
+//     // char* errstr = taos_errstr(result);
+//     // printf("query sql: %s \n query result: %s \n", sql, errstr);
+//     // taos_free_result(result);    
+//     // free(sql);
+// }
 
 static void exceptionCallback(struct exception_handler_args args)
 {
@@ -83,7 +83,7 @@ static void exceptionCallback(struct exception_handler_args args)
 static void accessRightsCallback(struct access_rights_handler_args args)
 {
     chid        chid = args.chid;
-
+    
     printChidInfo(chid,"accessRightsCallback");
 }
 
@@ -97,8 +97,10 @@ static void eventCallback(struct event_handler_args eha)
     //--------------------------------------
     
     pv->status = eha.status;
+    printf("ppvstatustest2:%s:%d\n", pv->name, pv->status); 
     if (eha.status == ECA_NORMAL)
     {
+        printf("cbctest,name:%s,cbc:%d", pv->name, pv->callbackCounts);
         pv->callbackCounts++;          
         //pv->dbrType = eha.type;
         //pv->nElems = eha.count;
@@ -157,25 +159,29 @@ static void connectionCallback(struct connection_handler_args args)
                                                 ppv->chid,
                                                 eventMask,
                                                 eventCallback,
-                                                (void*)ppv,
+                                                (void*)ppv,// callback argument
                                                 &ppv->evid);
 
-        //*******************
-        //如果这些都成功了，也往数据库里写一条数据。
-        //PV上线和下线都在数据库里进行记录
-        //*******************
-        //-----------------
-        //注意！如果一段代码在超过一个地方调用，那么请单独封装成一个函数。否则在修改时，你就需要同时修改多个地方。
-        //------------------
-        PVStatus2TD(Archiver->taos,ppv);          
+            
+            //*******************
+            //如果这些都成功了，也往数据库里写一条数据。
+            //PV上线和下线都在数据库里进行记录
+            //*******************
+            //-----------------
+            //注意！如果一段代码在超过一个地方调用，那么请单独封装成一个函数。否则在修改时，你就需要同时修改多个地方。
+            //------------------
+             
         }
+        ppv->isConnected = 1;
+        
+        PVStatus2TD(Archiver->taos, ppv, 1);//在线写1      
     }
     else if ( args.op == CA_OP_CONN_DOWN ) {//连接断开时
-        
         nConn--;
         ppv->status = ECA_DISCONN;
+        ppv->isConnected = 0;
         print_time_val_sts(ppv, reqElems);
-        PVStatus2TD(Archiver->taos,ppv);
+        PVStatus2TD(Archiver->taos, ppv, 0);//不在线写0
     }
 
 }
@@ -221,27 +227,34 @@ int main(int argc,char **argv)
         npv++;
     }
     fclose(fp);
+    printf("pmynode's address in main func = %p\n",  pmynode);
+    for (i=0; i<npv; i++) {
+        //pmynode[i]->callbackCounts = 0;
+        ///printf("ddddddddddd:%d\n",pmynode[i]->callbackCounts);
+        //pmynode[i]->isConnected = 0;
+        printf("pmynode[%d] address in main func = %p\n", i, pmynode[i]);      
+    }
     Archiver->nodelist = pmynode;
     Archiver->nPv = npv;
     printf("Setup monitor!\n");
     syslog(LOG_USER|LOG_INFO,"Setup monitor!\n"); 
     start_archive_thread(Archiver);          //启动读取线程，将fifo中的数据读出来写入TDengine
-
     printf("archiver thread started!\n");
     syslog(LOG_USER|LOG_INFO,"archiver thread started!\n"); 
     
     SEVCHK(ca_context_create(ca_disable_preemptive_callback),"ca_context_create");
     SEVCHK(ca_add_exception_event(exceptionCallback,NULL),
         "ca_add_exception_event");
-    for (i=0; i<npv; i++) {
+    for (i=0; i<npv; i++) {  
         SEVCHK(ca_create_channel(pmynode[i]->name,connectionCallback,
                 (void*)pmynode[i],20,&pmynode[i]->chid),
                 "ca_create_channel");
         SEVCHK(ca_replace_access_rights_event(pmynode[i]->chid,
                 accessRightsCallback),
                 "ca_replace_access_rights_event");
-        
     }
+    start_archiver_monitor(Archiver);
+    //archiver_monitor_thread(Archiver);
     /*Should never return from following call*/
     SEVCHK(ca_pend_event(0.0),"ca_pend_event");
     return 0;

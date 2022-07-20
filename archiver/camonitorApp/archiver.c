@@ -11,6 +11,7 @@
 #include "time.h"
 
 
+
 ARCHIVER*  archive_initial()
 {
     ARCHIVER * archiver = (ARCHIVER *)callocMustSucceed(1, sizeof(ARCHIVER), "archiver");
@@ -41,6 +42,8 @@ ARCHIVE_ERROR archive_pv(evargs eha)
     strcpy(&newdata.pvname,ca_name(eha.chid));
     newdata.type = eha.type;
     newdata.count = eha.count;
+
+
     memcpy(&newdata.data,eha.dbr,dbr_size_n(eha.type,eha.count));
 
    
@@ -84,7 +87,7 @@ void archive_thread(ARCHIVER *parchiver)
             要求：1. 数据库连接中断时可以自动重新连接
                  2. 把时间戳、警报状态也一起存储.(具体获得方法展开dbr2str里查看）    
         //----------------------------------------------------*/
-             Pv2TD(Archiver->taos, data);
+             Pv2TD(Archiver->taos, data);           
         }
         else
         {
@@ -97,7 +100,7 @@ ARCHIVE_ERROR start_archive_thread(ARCHIVER *archiver)
 {
     printf("start_archive_thread called\n");
     if (epicsThreadCreate("ArchiverTask", epicsThreadPriorityHigh,
-		10000, (EPICSTHREADFUNC*)archive_thread, (void *)Archiver)
+		10000, (EPICSTHREADFUNC*)archive_thread, (void *)archiver)
 		== (epicsThreadId) 0) {
 		printf ("ArchiverTask spawn error\n");
         syslog(LOG_USER|LOG_INFO,"ArchiverTask spawn error\n"); 
@@ -105,12 +108,21 @@ ARCHIVE_ERROR start_archive_thread(ARCHIVER *archiver)
 	}
 }
 
+
+
 ARCHIVE_ERROR archiver_monitor_thread(ARCHIVER *archiver)
 {
     pv * pvlisthead;
     int npv = archiver->nPv;
-    int callBackCounts=0;
-    pvlisthead = Archiver->nodelist;
+    long long callBackCounts=0;
+    //int callBackCounts=0;
+    int nPvOn = 0;
+    int nPvOff = 0;
+    pvlisthead = archiver->nodelist;
+    
+    
+
+    //printf("pvlisthead in archiver_monitor_thread = %p\n\n\n\n",  pvlisthead);
     int i;
 
     while (true)
@@ -122,9 +134,19 @@ ARCHIVE_ERROR archiver_monitor_thread(ARCHIVER *archiver)
 
         for (i = 0; i < npv; i++)
         {
-            callBackCounts += pvlisthead[i].callbackCounts;          //这就是所有pv总的回调次数。。利用类似的机制可以统计数据采集整体状态
-        }
-        sleep(10000); //等待10秒
+            //printf("pvlisthead[%d] in archiver_monitor_thread = %p\n\n", i, pvlisthead[i]);
+            callBackCounts = pvlisthead[i].callbackCounts;  //这就是所有pv总的回调次数。。利用类似的机制可以统计数据采集整体状态
+            if(pvlisthead[i].isConnected == 1) {
+                nPvOn++;
+            } else {
+                nPvOff++;
+            }
+        } 
+        HB2TD(Archiver->taos, callBackCounts, nPvOn, nPvOff);
+        callBackCounts = 0;  
+        nPvOn = 0;
+        nPvOff = 0;
+        sleep(10); //等待10秒
     }
     
 }
@@ -133,13 +155,12 @@ ARCHIVE_ERROR start_archiver_monitor(ARCHIVER *archiver)
 {
         printf("start_archiver_monitor_thread called\n");
     if (epicsThreadCreate("ArchiverMonitorTask", epicsThreadPriorityHigh,
-		10000, (EPICSTHREADFUNC*)archiver_monitor_thread, (void *)Archiver)
+		1, (EPICSTHREADFUNC*)archiver_monitor_thread, (void *)archiver)
 		== (epicsThreadId) 0) {
 		printf ("ArchiverTask spawn error\n");
         syslog(LOG_USER|LOG_INFO,"ArchiverMonitorTask spawn error\n"); 
 		return -1;
 	}
-
 }
 
 /*-------------------
@@ -157,41 +178,4 @@ ARCHIVE_ERROR start_archiver_monitor(ARCHIVER *archiver)
 ---------------------*/
 
 
-void str_replace(char * str1, char * str2, char * str3){
-    int i, j, k, done, count = 0, gap = 0;
-    char temp[300];
-    for(i = 0; i < strlen(str1); i += gap){
-        if(str1[i] == str2[0]){
-            done = 0;
-            for(j = i, k = 0; k < strlen(str2); j++, k++){
-                if(str1[j] != str2[k]){
-                    done = 1;
-                    gap = k;
-                    break;
-                }
-            }
-            if(done == 0){ // 已找到待替换字符串并替换
-                for(j = i + strlen(str2), k = 0; j < strlen(str1); j++, k++){ // 保存原字符串中剩余的字符
-                    temp[k] = str1[j];
-                }
-                temp[k] = '\0'; // 将字符数组变成字符串
-                for(j = i, k = 0; k < strlen(str3); j++, k++){ // 字符串替换
-                    str1[j] = str3[k];
-                    count++;
-                }
-                for(k = 0; k < strlen(temp); j++, k++){ // 剩余字符串回接
-                    str1[j] = temp[k];
-                }
-                str1[j] = '\0'; // 将字符数组变成字符串
-                gap = strlen(str2);
-            }
-        }else{
-            gap = 1;
-        }
-    }
-    if(count == 0){
-        printf("Can't find the replaced string!\n");
-    }
-    return;
-}
 

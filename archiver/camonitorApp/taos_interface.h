@@ -14,5 +14,6 @@
 
 
 int Pv2TD(TAOS * taos,ARCHIVE_ELEMENT data);
-int PVStatus2TD(TAOS * taos, pv * data);
+int PVStatus2TD(TAOS * taos, pv * data, int status);
+int HB2TD(TAOS * taos, int callBackCounts, int nPVOnline, int nPVOffline);
 TAOS* TaosConnect(char* host, char* user,char* passwd);
