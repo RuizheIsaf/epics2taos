@@ -191,7 +191,11 @@ int main(int argc,char **argv)
    
     char *filename;
     int         npv = 0;
-    pv          *pmynode[MAX_PV];
+    
+    //pv          *pmynode[MAX_PV];
+    pv** pmynode;
+    pmynode  = (pv **) callocMustSucceed(MAX_PV, sizeof(pv), "caMonitor");
+
     char        *pname[MAX_PV];
     int i;
     char        tempStr[MAX_PV_NAME_LEN];

@@ -130,7 +130,7 @@ ARCHIVE_ERROR archiver_monitor_thread(ARCHIVER *archiver)
         for (i = 0; i < npv; i++)
         {
             //printf("pvlisthead[%d] in archiver_monitor_thread = %p\n\n", i, pvlisthead[i]);
-            callBackCounts = pvlisthead[i].callbackCounts;  //这就是所有pv总的回调次数。。利用类似的机制可以统计数据采集整体状态
+            callBackCounts = pvlisthead[i]->callbackCounts;  //这就是所有pv总的回调次数。。利用类似的机制可以统计数据采集整体状态
             if(pvlisthead[i].isConnected == 1) {
                 nPvOn++;
             } else {
