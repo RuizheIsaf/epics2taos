@@ -114,24 +114,19 @@ ARCHIVE_ERROR archiver_monitor_thread(ARCHIVER *archiver)
 {
     pv * pvlisthead;
     int npv = archiver->nPv;
-    long long callBackCounts=0;
+    int callBackCounts=0;
     //int callBackCounts=0;
     int nPvOn = 0;
     int nPvOff = 0;
     pvlisthead = archiver->nodelist;
-    
-    
-
     //printf("pvlisthead in archiver_monitor_thread = %p\n\n\n\n",  pvlisthead);
     int i;
-
     while (true)
     {
         //*************************************************************************
         //将数据采集进程的状态写入数据库。。上层软件可以可以根据这个统计信息了解数据采集进程的状态。
         //这个也作为采集系统的心跳。。如果心跳数据不正常。。上层软件可以通过管理程序重启采集进程
         //**************************************************************************
-
         for (i = 0; i < npv; i++)
         {
             //printf("pvlisthead[%d] in archiver_monitor_thread = %p\n\n", i, pvlisthead[i]);

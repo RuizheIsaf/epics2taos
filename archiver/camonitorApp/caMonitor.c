@@ -96,11 +96,9 @@ static void eventCallback(struct event_handler_args eha)
     //通过这个pv指针，可以用来存储特定pv通道的统计信息
     //--------------------------------------
     
-    pv->status = eha.status;
-    printf("ppvstatustest2:%s:%d\n", pv->name, pv->status); 
+    pv->status = eha.status; 
     if (eha.status == ECA_NORMAL)
-    {
-        printf("cbctest,name:%s,cbc:%d", pv->name, pv->callbackCounts);
+    { 
         pv->callbackCounts++;          
         //pv->dbrType = eha.type;
         //pv->nElems = eha.count;
@@ -227,13 +225,13 @@ int main(int argc,char **argv)
         npv++;
     }
     fclose(fp);
-    printf("pmynode's address in main func = %p\n",  pmynode);
-    for (i=0; i<npv; i++) {
-        //pmynode[i]->callbackCounts = 0;
-        ///printf("ddddddddddd:%d\n",pmynode[i]->callbackCounts);
-        //pmynode[i]->isConnected = 0;
-        printf("pmynode[%d] address in main func = %p\n", i, pmynode[i]);      
-    }
+    // printf("pmynode's address in main func = %p\n",  pmynode);
+    // for (i=0; i<npv; i++) {
+    //     //pmynode[i]->callbackCounts = 0;
+    //     ///printf("ddddddddddd:%d\n",pmynode[i]->callbackCounts);
+    //     //pmynode[i]->isConnected = 0;
+    //     printf("pmynode[%d] address in main func = %p\n", i, pmynode[i]);      
+    // }
     Archiver->nodelist = pmynode;
     Archiver->nPv = npv;
     printf("Setup monitor!\n");

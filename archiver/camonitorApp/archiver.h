@@ -55,6 +55,7 @@ void archive_thread(ARCHIVER *parchiver);
 ARCHIVE_ERROR start_archive_thread(ARCHIVER *archiver);
 
 ARCHIVE_ERROR archiver_monitor_thread(ARCHIVER *archiver);
+
 ARCHIVE_ERROR start_archiver_monitor(ARCHIVER *archiver);
 
 
