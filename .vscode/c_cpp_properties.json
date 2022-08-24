@@ -6,9 +6,7 @@
                 "${workspaceFolder}/**",
                 "/home/zheng1/EPICS/epics-base/**"
             ],
-            "defines": [
-                ""
-            ],
+            "defines": [],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c89",
             "cppStandard": "c++14",

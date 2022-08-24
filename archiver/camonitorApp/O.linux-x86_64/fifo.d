@@ -1,12 +1,10 @@
-archiver.o: ../archiver.c /home/zheng1/EPICS/epics-base/include/alarm.h \
+fifo.o: ../fifo.c ../archiver.h \
+ /home/zheng1/EPICS/epics-base/include/epicsStdlib.h \
  /home/zheng1/EPICS/epics-base/include/shareLib.h \
- /home/zheng1/EPICS/epics-base/include/epicsString.h \
+ /home/zheng1/EPICS/epics-base/include/os/Linux/osdStrtod.h \
  /home/zheng1/EPICS/epics-base/include/epicsTypes.h \
  /home/zheng1/EPICS/epics-base/include/compilerDependencies.h \
  /home/zheng1/EPICS/epics-base/include/compiler/gcc/compilerSpecific.h \
- /home/zheng1/EPICS/epics-base/include/cantProceed.h ../archiver.h \
- /home/zheng1/EPICS/epics-base/include/epicsStdlib.h \
- /home/zheng1/EPICS/epics-base/include/os/Linux/osdStrtod.h \
  /home/zheng1/EPICS/epics-base/include/errMdef.h \
  /home/zheng1/EPICS/epics-base/include/epicsMutex.h \
  /home/zheng1/EPICS/epics-base/include/epicsAssert.h \
@@ -26,4 +24,4 @@ archiver.o: ../archiver.c /home/zheng1/EPICS/epics-base/include/alarm.h \
  /home/zheng1/EPICS/epics-base/include/caeventmask.h \
  /home/zheng1/EPICS/epics-base/include/os/Linux/epicsGetopt.h \
  ../tool_lib.h /home/zheng1/EPICS/epics-base/include/epicsTime.h \
- ../fifo.h ../taos_interface.h ../loadConfig.h
+ ../fifo.h ../taos_interface.h

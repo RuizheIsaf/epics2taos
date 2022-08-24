@@ -40,7 +40,7 @@ while [ 1 ] ; do
         # 隐藏启动test 
         # nohup ./test  > nohuptest.file 2>&1 &
 	# insert into tdengine	echo $(date +%s)
-	# curl -H 'Authorization: Basic cm9vdDp0YW9zZGF0YQ==' -d 'insert into monitor values($(date +%s), 0);' 172.16.5.20:6041/rest/sql/monitor
+	# curl -H 'Authorization: Basic cm9vdDp0YW9zZGF0YQ==' -d 'insert into monitor values($(date +%s), 0);' localhost:6041/rest/sql/monitor
 	str1="insert into monitor values('"
 	str2=$(date +"%Y-%m-%d %H:%M:%S")
 	str3="', 0);"

@@ -279,8 +279,15 @@ char *val2str (const void *v, unsigned type, int index)
     epicsTimeToStrftime(timeText, TIMETEXTLEN, timeFormatStr,   \
                         &(((struct T *)value)->stamp));         \
     sprintf(str,                                                \
-            FMT_TIME "\n" FMT_STS,                              \
-            ARGS_TIME(T), ARGS_STS(T))
+            "%s,%s,%s",                              \
+            ARGS_TIME(T), stat_to_str(((struct T *)value)->status), sevr_to_str(((struct T *)value)->severity))
+
+    // sprintf(str,                                                \
+    //         INSERT_SQL,                              \
+    //         ARGS_TIME(T), stat_to_str(((struct T *)value)->status), sevr_to_str(((struct T *)value)->severity))
+    // sprintf(str, \
+    // INSERT_SQL, \
+    // ARGS_TIME(T), stat_to_str(((struct T *)value)->status), sevr_to_str(((struct T *)value)->severity))
 
 #define PRN_DBR_GR(T,F,FMT)                             \
     sprintf(str,                                        \
@@ -329,6 +336,10 @@ char *val2str (const void *v, unsigned type, int index)
     + 2 * 45                    /* control limits */                    \
     + 30 + (MAX_ENUM_STATES * (20 + MAX_ENUM_STRING_SIZE)) /* enums */  \
     + 50                        /* just to be sure */
+
+// #define INSERT_SQL\
+//     "insert into pvs.pv_name using pvs.pv tags(0) values (\'%s\', pv_value, \'%s\', \'%s\'); \n "
+
 
 char *dbr2str (const void *value, unsigned type)
 {

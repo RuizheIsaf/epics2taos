@@ -1,0 +1,31 @@
+#create stable pv
+create database if not exists pvs;
+use pvs;
+create stable pv(ts TIMESTAMP, val INT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);
+
+#create stable status
+create database if not exists status;
+use status;
+create stable st(ts TIMESTAMP, val INT) tags(groupId INT);
+
+#create database monitor and table monitor;
+CREATE DATABASE monitor;
+USE monitor;
+CREATE TABLE monitor (ts TIMESTAMP, status INT);
+
+#create table pvmonitor
+Use monitor
+CREATE TABLE monitor_pv(ts TIMESTAMP, callbackcounts BIGINT, npvon  INT, npvoff INT);
+
+#统计在线pv数量
+#查询数据库status的超级表st中val属性的最后非null数值，并按表名分类，再把改查询结果求和（因为在线的pv在数据库中的最后值为1，否则为0）
+select sum(a) from (select last(val) as a from status.st group by tbname) ;
+
+
+
+
+
+
+
+
+

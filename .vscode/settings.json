@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "sstream": "c",
+        "functional": "c",
+        "array": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "archiver.h": "c"
+    }
+}

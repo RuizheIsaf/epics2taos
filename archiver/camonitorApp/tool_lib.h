@@ -79,6 +79,8 @@ typedef struct
     char firstStampPrinted;
     char onceConnected;
     evid evid;
+    int callbackCounts;         //每次eventCallback调用时，将这个值加一。这个值可以用来统计不同PV的带宽占用比例。
+    int isConnected;
 } pv;
 
 

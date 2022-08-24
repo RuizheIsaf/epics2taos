@@ -26,7 +26,13 @@
         "dbdefs.h": "c",
         "headers.h": "c",
         "taos.h": "c",
-        "epicsstdlib.h": "c"
+        "epicsstdlib.h": "c",
+        "*.tcc": "c",
+        "deque": "c",
+        "list": "c",
+        "vector": "c",
+        "taos_interface.h": "c",
+        "loadconfig.h": "c"
     },
     "C_Cpp.errorSquiggles": "Enabled"
 }
