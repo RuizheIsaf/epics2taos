@@ -142,7 +142,7 @@ ARCHIVE_ERROR archiver_monitor_thread(ARCHIVER *archiver)
                 nPvOff++;
             }
         } 
-        //HB2TD(Archiver->taos, callBackCounts, nPvOn, nPvOff);
+        HB2TD(Archiver->taos, callBackCounts, nPvOn, nPvOff);
         //printf("callBackCounts-1 %d\n\n", callBackCounts);
         callBackCounts = 0; //归零 
         //printf("callBackCounts-2 %d\n\n", callBackCounts);

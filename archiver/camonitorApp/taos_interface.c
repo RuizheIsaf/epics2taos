@@ -81,8 +81,9 @@ int PVStatus2TD(TAOS * taos, pv * ppv, int status)
 
 
     } else {
-        //debug sql
-        //printf("insert row: %s result: success\n", sql);
+        #ifdef DEBUG
+        printf("insert row: %s result: success\n", sql);
+        #endif
     }
 
     taos_free_result(result);
@@ -145,8 +146,9 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
 
 
     } else {
-        //debug sql
-        //printf("insert row: %s result: success\n", sql);
+        #ifdef DEBUG
+        printf("insert row: %s result: success\n", sql);
+        #endif
     }
     // result = taos_query(Archiver->taos, sql);
     // errstr = taos_errstr(result);
@@ -202,8 +204,9 @@ int HB2TD(TAOS * taos, int callBackCounts, int nPvOn, int nPvOff)
 
 
     } else {
-        //debug sql
-        //printf("insert row: %s result: success\n", sql);
+        #ifdef DEBUG
+        printf("insert row: %s result: success\n", sql);
+        #endif
     }
     // result = taos_query(Archiver->taos, sql);
     // errstr = taos_errstr(result);
