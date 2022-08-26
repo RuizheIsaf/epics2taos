@@ -15,7 +15,11 @@
 
 
 
+<<<<<<< HEAD
 #define MAX_DATA_LENGTH 128
+=======
+#define MAX_DATA_LENGTH 64
+>>>>>>> e5b405315f6345677befccbd094ff17da64e2b59
 typedef struct{
     char		    pvname[40];
     long            type;   /* type of pv */ 
