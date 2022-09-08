@@ -19,6 +19,10 @@ ARCHIVER*  archive_initial()
     ARCHIVER * archiver = (ARCHIVER *)callocMustSucceed(1, sizeof(ARCHIVER), "archiver");
     archiver->ring_buffer = (FIFO*) callocMustSucceed(1, sizeof(FIFO), "archiver");
     archiver->ring_buffer->buff = (ARCHIVE_ELEMENT*)callocMustSucceed(BUFF_LENGTH, sizeof(ARCHIVE_ELEMENT), "archiver");
+
+    epicsEventInitialState initialState;
+    archiver->evt_newdata_in =  epicsEventMustCreate(initialState);      //建立一个EPICS事件,每次fifo写入新数据时发送这个事件。
+
     printf("fifo initial\n");
     fifoInitial(archiver->ring_buffer,BUFF_LENGTH);    //初始化缓存
     printf("fifo initial\n");
@@ -47,12 +51,14 @@ ARCHIVE_ERROR archive_pv(evargs eha)
     newdata.type = eha.type;
     newdata.count = eha.count;
 
-
     memcpy(&newdata.data,eha.dbr,dbr_size_n(eha.type,eha.count));
 
    
     if(fifoWrite(Archiver->ring_buffer, newdata)==FIFO_OK)
     {
+        
+        epicsEventTrigger (Archiver->evt_newdata_in);     //新数据写入fifo成功后发送信号
+
         //epicsMutexUnlock(Archiver->ring_buffer->readLock);
         /*-----------
         EPICS的互斥锁只能在同一个线程里成对使用。不能一个线程锁后在另一线程里解锁。上面这么写是错的
@@ -73,7 +79,8 @@ void archive_thread(ARCHIVER *parchiver)
     while (true)
     {
         //epicsMutexMustLock(Archiver->ring_buffer->readLock);
-        if(fifoRead(Archiver->ring_buffer, &data)!= FIFO_EMPTY)
+        epicsEventWait(Archiver->evt_newdata_in);
+        while(fifoRead(Archiver->ring_buffer, &data)!= FIFO_EMPTY)
         {    
             #ifdef DEBUG
             printf("-----------------------\n");
@@ -92,10 +99,7 @@ void archive_thread(ARCHIVER *parchiver)
         //----------------------------------------------------*/
              Pv2TD(Archiver->taos, data);           
         }
-        else
-        {
-            //printf("fifo read error!\n");
-        }
+        //usleep(10);
     }   
 }
 
@@ -143,7 +147,7 @@ ARCHIVE_ERROR archiver_monitor_thread(ARCHIVER *archiver)
             }
         } 
         HB2TD(Archiver->taos, callBackCounts, nPvOn, nPvOff);
-        //printf("callBackCounts-1 %d\n\n", callBackCounts);
+        printf("callBackCounts-1 %d\n\n", callBackCounts);
         callBackCounts = 0; //归零 
         //printf("callBackCounts-2 %d\n\n", callBackCounts);
         nPvOn = 0;
