@@ -1,6 +1,6 @@
 BL1:IM2:LV:POS:RBV
 BL1:PRF1:CAM:Acquire
-BL1:PRF1:RAW:ArrayData
+#BL1:PRF1:RAW:ArrayData
 BL:BS0:Status
 BL:FCV:Status
 BL:G0:PA

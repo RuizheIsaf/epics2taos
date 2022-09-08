@@ -5,6 +5,7 @@
 #include <epicsStdlib.h>
 #include <string.h>
 #include <epicsMutex.h> 
+#include <epicsEvent.h>
 #include <epicsThread.h>
 #include <cadef.h>
 #include <epicsGetopt.h>
@@ -42,6 +43,7 @@ typedef struct{
     TAOS            *taos;
     pv**            nodelist;
     int             nPv;
+    epicsEventId    evt_newdata_in;
 } ARCHIVER;
 
 ARCHIVER* Archiver;

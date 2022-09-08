@@ -56,7 +56,7 @@ int PVStatus2TD(TAOS * taos, pv * ppv, int status)
     taos_free_result(result);
     result = taos_query(Archiver->taos, "create stable if not exists st(ts TIMESTAMP, val INT) tags(groupId INT);");
     taos_free_result(result);
-    sprintf(sql, "insert into status.`%s` using status.st tags(0) values (\'%s\', %d) \n" , ppv->name, timeText, status);
+    sprintf(sql, "insert into status.`%s` using status.st tags(0) values (\'%s\', %d)\n" , ppv->name, timeText, status);
     result = taos_query(Archiver->taos, sql);
     int errno = taos_errno(result);
     if (result == NULL || errno != 0) {//如果taos_errno返回0说明执行成功

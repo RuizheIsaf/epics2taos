@@ -108,6 +108,8 @@ static void eventCallback(struct event_handler_args eha)
         //fflush(stdout);
         //pv->value = NULL;
         archive_pv(eha);   
+        int callbackCounts;
+        int isConnected;
     }
     
 }
@@ -172,16 +174,15 @@ static void connectionCallback(struct connection_handler_args args)
         }
         ppv->isConnected = 1;
         
-        //PVStatus2TD(Archiver->taos, ppv, 1);//在线写1      
+        PVStatus2TD(Archiver->taos, ppv, 1);//在线写1      
     }
     else if ( args.op == CA_OP_CONN_DOWN ) {//连接断开时
         nConn--;
         ppv->status = ECA_DISCONN;
         ppv->isConnected = 0;
         print_time_val_sts(ppv, reqElems);
-        //PVStatus2TD(Archiver->taos, ppv, 0);//不在线写0
+        PVStatus2TD(Archiver->taos, ppv, 0);//不在线写0
     }
-
 }
 
 
