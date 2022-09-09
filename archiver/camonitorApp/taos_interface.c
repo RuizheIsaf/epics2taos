@@ -50,12 +50,6 @@ int PVStatus2TD(TAOS * taos, pv * ppv, int status)
     char* errstr;
     TAOS_RES* result;
 
-    result = taos_query(Archiver->taos, "create database if not exists status;");
-    taos_free_result(result);
-    result = taos_query(Archiver->taos, "use status;");
-    taos_free_result(result);
-    result = taos_query(Archiver->taos, "create stable if not exists st(ts TIMESTAMP, val INT) tags(groupId INT);");
-    taos_free_result(result);
     sprintf(sql, "insert into status.`%s` using status.st tags(0) values (\'%s\', %d) \n" , ppv->name, timeText, status);
     result = taos_query(Archiver->taos, sql);
     int errno = taos_errno(result);
@@ -64,6 +58,34 @@ int PVStatus2TD(TAOS * taos, pv * ppv, int status)
         syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
         taos_free_result(result);
         //exit(1);
+
+        if(errno == -2147482752) {//"Database not specified or available"，建库并且建超级表，之后再执行一遍插入
+            printf("Database not specified or available\n");
+            result = taos_query(Archiver->taos, "create database if not exists status;");
+            taos_free_result(result);
+            printf("Database pvs created!\n");
+            result = taos_query(Archiver->taos, "use status;");
+            taos_free_result(result);
+            printf("Using database status...\n");
+            result = taos_query(Archiver->taos, "create stable if not exists st(ts TIMESTAMP, val INT) tags(groupId INT);");
+            taos_free_result(result);
+            printf("Stable st created!\n");
+            sprintf(sql, "insert into status.`%s` using status.st tags(0) values (\'%s\', %d) \n" , ppv->name, timeText, status);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+        } 
+        if(errno == -2147482782) {//"Table does not exist"，有库没表，建超级表，之后再执行一次插入
+            printf("Table does not exist\n");
+            result = taos_query(Archiver->taos, "use status;");
+            taos_free_result(result);
+            printf("Using database status...\n");
+            result = taos_query(Archiver->taos, "create stable if not exists st(ts TIMESTAMP, val INT) tags(groupId INT);");
+            taos_free_result(result);
+            printf("Stable st created!\n");
+            sprintf(sql, "insert into status.`%s` using status.st tags(0) values (\'%s\', %d) \n" , ppv->name, timeText, status);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+        }
 
         //通过返回的errono判断是否断线，如果断线则重新连接
         //错误代码参照：https://www.bookstack.cn/read/TDengin-2.0-zh/9436ce1aea0b27a2.md
@@ -115,20 +137,47 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
     //char sql2[256];
     char* errstr;
 
-    result = taos_query(Archiver->taos, "create database if not exists pvs;");
-    taos_free_result(result);
-    result = taos_query(Archiver->taos, "use pvs;");
-    taos_free_result(result);
-    result = taos_query(Archiver->taos, "create stable if not exists pv(ts TIMESTAMP, val FLOAT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);");
-    taos_free_result(result);
+    
+    
     sprintf(sql, "insert into pvs.`%s` using pvs.pv tags(0) values (\'%s\', \'%s\', \'%s\', \'%s\'); \n ", data.pvname, ts, value, status, severity);
     
     result = taos_query(Archiver->taos, sql);
+    
     int errno = taos_errno(result);
+    //printf("errno:%d", errno);
     if (result == NULL || errno != 0) {//如果taos_errno返回0说明执行成功
         printf("failed to insert row: %s, reason: %s\n", sql, taos_errstr(result));
         syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
         taos_free_result(result);
+
+        if(errno == -2147482752) {//"Database not specified or available"，建库并且建超级表，之后再执行一遍插入
+            printf("Database not specified or available\n");
+            result = taos_query(Archiver->taos, "create database if not exists pvs;");
+            taos_free_result(result);
+            printf("Database pvs created!\n");
+            result = taos_query(Archiver->taos, "use pvs;");
+            taos_free_result(result);
+            printf("Using database pvs...\n");
+            result = taos_query(Archiver->taos, "create stable if not exists pv(ts TIMESTAMP, val FLOAT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);");
+            taos_free_result(result);
+            printf("Stable pv created!\n");
+            sprintf(sql, "insert into pvs.`%s` using pvs.pv tags(0) values (\'%s\', \'%s\', \'%s\', \'%s\'); \n ", data.pvname, ts, value, status, severity);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+        } 
+        if(errno == -2147482782) {//"Table does not exist"，有库没表，建超级表，之后再执行一次插入
+            printf("Table does not exist\n");
+            result = taos_query(Archiver->taos, "use pvs;");
+            taos_free_result(result);
+            printf("Using database pvs...\n");
+            result = taos_query(Archiver->taos, "create stable if not exists pv(ts TIMESTAMP, val FLOAT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);");
+            taos_free_result(result);
+            printf("Stable pv created!\n");
+            sprintf(sql, "insert into pvs.`%s` using pvs.pv tags(0) values (\'%s\', \'%s\', \'%s\', \'%s\'); \n ", data.pvname, ts, value, status, severity);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+        }
+        
         //exit(1);
         //通过返回的errono判断是否断线，如果断线则重新连接
         //错误代码参照：https://www.bookstack.cn/read/TDengin-2.0-zh/9436ce1aea0b27a2.md
@@ -138,11 +187,11 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
         
 	        syslog(LOG_USER|LOG_INFO,"TDengine disconnected error\n");//将错误写入日志
             while(Archiver->taos == NULL) {
-			    
 			    Archiver->taos = TaosConnect();//如果连接中断，重新连接
                 sleep(5);
 		    }     
         }
+         
 
 
     } else {
@@ -172,12 +221,7 @@ int HB2TD(TAOS * taos, int callBackCounts, int nPvOn, int nPvOff)
     epicsTimeToStrftime(timeText, 28, timeFormatStr, &tsNow);
     char sql[256];
     char* errstr;
-    result = taos_query(Archiver->taos, "create database if not exists monitor;");
-    taos_free_result(result);
-    result = taos_query(Archiver->taos, "use monitor;");
-    taos_free_result(result);
-    result = taos_query(Archiver->taos, "CREATE TABLE IF NOT EXISTS monitor_pv(ts TIMESTAMP, callbackcounts BIGINT, npvon  INT, npvoff INT);");
-    taos_free_result(result);
+
     sprintf(sql, "insert into monitor.monitor_pv values (\'%s\', %d, %d, %d) \n" , timeText, callBackCounts, nPvOn, nPvOff);
     
     result = taos_query(Archiver->taos, sql);
@@ -186,6 +230,35 @@ int HB2TD(TAOS * taos, int callBackCounts, int nPvOn, int nPvOff)
         printf("failed to insert row: %s, reason: %s\n", sql, taos_errstr(result));
         syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
         taos_free_result(result);
+
+    if(errno == -2147482752) {//"Database not specified or available"，建库并且建超级表，之后再执行一遍插入
+            printf("Database not specified or available\n");
+            result = taos_query(Archiver->taos, "create database if not exists monitor;");
+            taos_free_result(result);
+            printf("Database monitor created!\n");
+            result = taos_query(Archiver->taos, "use monitor;");
+            taos_free_result(result);
+            printf("Using database monitor...\n");
+            result = taos_query(Archiver->taos, "CREATE TABLE IF NOT EXISTS monitor_pv(ts TIMESTAMP, callbackcounts BIGINT, npvon  INT, npvoff INT);");
+            taos_free_result(result);
+            printf("Table monitor_pv created!\n");
+            sprintf(sql, "insert into monitor.monitor_pv values (\'%s\', %d, %d, %d) \n" , timeText, callBackCounts, nPvOn, nPvOff);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+        } 
+        if(errno == -2147482782) {//"Table does not exist"，有库没表，建超级表，之后再执行一次插入
+            printf("Table does not exist\n");
+            result = taos_query(Archiver->taos, "use monitor;");
+            taos_free_result(result);
+            printf("Using database monitor...\n");
+            result = taos_query(Archiver->taos, "CREATE TABLE IF NOT EXISTS monitor_pv(ts TIMESTAMP, callbackcounts BIGINT, npvon  INT, npvoff INT);");
+            taos_free_result(result);
+            printf("Table monitor_pv created!\n");
+            sprintf(sql, "insert into monitor.monitor_pv values (\'%s\', %d, %d, %d) \n" , timeText, callBackCounts, nPvOn, nPvOff);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+        }
+
         //exit(1);
         //通过返回的errono判断是否断线，如果断线则重新连接
         //错误代码参照：https://www.bookstack.cn/read/TDengin-2.0-zh/9436ce1aea0b27a2.md

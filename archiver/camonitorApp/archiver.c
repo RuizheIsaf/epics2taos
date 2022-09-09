@@ -152,7 +152,6 @@ ARCHIVE_ERROR archiver_monitor_thread(ARCHIVER *archiver)
         //printf("callBackCounts-2 %d\n\n", callBackCounts);
         nPvOn = 0;
         nPvOff = 0;
-        printf("caMonitor is running...\n");
         sleep(10); //等待10秒
     }
     
