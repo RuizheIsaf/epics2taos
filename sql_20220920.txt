@@ -1,0 +1,8 @@
+drop database pvs;
+create database pvs;
+use pvs;
+create stable pv(ts TIMESTAMP, val INT, status NCHAR(10), severity NCHAR(10)) tags(groupId INT);
+
+use monitor;
+drop table monitor_pv;
+CREATE TABLE monitor_pv(ts TIMESTAMP, callbackcounts INT, npvon  INT, npvoff INT);
