@@ -6,6 +6,8 @@
         "tuple": "c",
         "type_traits": "c",
         "utility": "c",
-        "archiver.h": "c"
+        "archiver.h": "c",
+        "random": "c",
+        "stdio.h": "c"
     }
 }

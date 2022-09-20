@@ -12,6 +12,24 @@
 #include <syslog.h>
 #include "archiver.h"
 
+typedef struct {
+    int64_t     ts;
+    int         val;
+    char        *status;
+    char        *serverity;
+} ROWPV;
+
+typedef struct {
+    int64_t     ts;
+    int         status;
+} ROWST;
+
+typedef struct {
+    int64_t ts;
+    int     callbackcounts;
+    int     npvon;
+    int     npvoff;
+} ROWMPV;
 
 int Pv2TD(TAOS * taos,ARCHIVE_ELEMENT data);
 int PVStatus2TD(TAOS * taos, pv * data, int status);

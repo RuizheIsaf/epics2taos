@@ -651,3 +651,36 @@ int connect_pvs (pv* pvs, int nPvs)
     }
     return returncode;
 }
+
+
+/*+**************************************************************************
+ *
+ * Function:	
+ *
+ *
+ **************************************************************************-*/
+#define NATIVE_DBR_TIME(T)   ((struct T *)value)->stamp;
+
+epicsTimeStamp dbr2ts (const void *value, unsigned type)
+{
+    epicsTimeStamp rst={0,0};
+    switch (type) {
+        case DBR_TIME_STRING:
+            rst = NATIVE_DBR_TIME(dbr_time_string);
+        case DBR_TIME_SHORT:
+            rst = NATIVE_DBR_TIME(dbr_time_short);
+        case DBR_TIME_FLOAT:
+            rst = NATIVE_DBR_TIME(dbr_time_float);
+        case DBR_TIME_ENUM:
+            rst = NATIVE_DBR_TIME(dbr_time_enum);
+        case DBR_TIME_CHAR:
+            rst = NATIVE_DBR_TIME(dbr_time_char);
+        case DBR_TIME_LONG:
+            rst = NATIVE_DBR_TIME(dbr_time_long);
+        case DBR_TIME_DOUBLE:
+            rst = NATIVE_DBR_TIME(dbr_time_double);
+        default: ;//printf("can't reconize data type\n");
+    }
+        return rst;
+}
+

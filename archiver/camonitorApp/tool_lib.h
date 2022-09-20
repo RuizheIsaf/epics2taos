@@ -101,6 +101,7 @@ extern char *dbr2str (const void *value, unsigned type);
 extern void print_time_val_sts (pv *pv, unsigned long reqElems);
 extern int  create_pvs (pv *pvs, int nPvs, caCh *pCB );
 extern int  connect_pvs (pv *pvs, int nPvs );
+extern epicsTimeStamp dbr2ts (const void *value, unsigned type);
 
 /*
  * no additions below this endif
