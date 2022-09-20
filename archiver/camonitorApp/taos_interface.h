@@ -14,7 +14,7 @@
 
 typedef struct {
     int64_t     ts;
-    int         val;
+    float         val;
     char        *status;
     char        *serverity;
 } ROWPV;

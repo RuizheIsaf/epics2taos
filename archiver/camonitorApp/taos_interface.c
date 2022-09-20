@@ -39,6 +39,7 @@ TAOS* TaosConnect()
 
 int PVStatus2TD(TAOS * taos, pv * ppv, int status)
 {
+    TAOS_RES* result;
     epicsTimeStamp tsNow;
     epicsTimeGetCurrent(&tsNow);
 
@@ -57,8 +58,19 @@ int PVStatus2TD(TAOS * taos, pv * ppv, int status)
     char tbname[64];
     sprintf(tbname, "`%s`", ppv->name);
     code = taos_select_db(taos, "status");
+    //printf("status_error_code: %d", code);
     if (code != 0) {
         //database not exist
+        printf("Database not specified or available\n");
+        result = taos_query(Archiver->taos, "create database if not exists status;");
+        taos_free_result(result);
+        printf("Database pvs created!\n");
+        result = taos_query(Archiver->taos, "use status;");
+        taos_free_result(result);
+        printf("Using database status...\n");
+        result = taos_query(Archiver->taos, "create stable if not exists st(ts TIMESTAMP, val INT) tags(groupId INT);");
+        taos_free_result(result);
+        printf("Stable st created!\n");
     }
     //printf("tbname: %s\n", tbname);
     code = taos_stmt_set_tbname(stmt, tbname);
@@ -207,6 +219,16 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
         code = taos_select_db(taos, "pvs");
         if (code != 0) {
             //database not exist
+            printf("Database not specified or available\n");
+            result = taos_query(Archiver->taos, "create database if not exists pvs;");
+            taos_free_result(result);
+            printf("Database pvs created!\n");
+            result = taos_query(Archiver->taos, "use pvs;");
+            taos_free_result(result);
+            printf("Using database pvs...\n");
+            result = taos_query(Archiver->taos, "create stable if not exists pv(ts TIMESTAMP, val FLOAT, status NCHAR(10), severity NCHAR(10)) tags(groupId INT);");
+            taos_free_result(result);
+            printf("Stable pv created!\n");
         }
         //printf("tbname: %s\n", tbname);
         code = taos_stmt_set_tbname(stmt, tbname);
@@ -238,8 +260,8 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
         values[0].length = &values[0].buffer_length;
         values[0].is_null = NULL;
 
-        values[1].buffer_type = TSDB_DATA_TYPE_INT;
-        values[1].buffer_length = sizeof(int);
+        values[1].buffer_type = TSDB_DATA_TYPE_FLOAT;
+        values[1].buffer_length = sizeof(rowpv.val);
         values[1].length = &values[1].buffer_length;
         values[1].is_null = NULL;
 
@@ -334,7 +356,7 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
 		    }     
         }
          
-
+CREATE TABLE IF NOT EXISTS monitor_pv(ts TIMESTAMP, callbackcounts INT, npvon  INT, npvoff INT);
 
     } else {
         #ifdef DEBUG
@@ -347,13 +369,24 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
 
 int HB2TD(TAOS * taos, int callBackCounts, int nPvOn, int nPvOff)
 {
-    
+    TAOS_RES* result;
     epicsTimeStamp tsNow;
     epicsTimeGetCurrent(&tsNow);
     TAOS_STMT *stmt = taos_stmt_init(taos);
     int code = taos_select_db(taos, "monitor");
+    //printf("HB2TD_error_code: %d", code);
     if (code != 0) {
         //database not exist
+        printf("Database not specified or available\n");
+        result = taos_query(Archiver->taos, "create database if not exists monitor;");
+        taos_free_result(result);
+        printf("Database monitor created!\n");
+        result = taos_query(Archiver->taos, "use monitor;");
+        taos_free_result(result);
+        printf("Using database monitor...\n");
+        result = taos_query(Archiver->taos, "CREATE TABLE IF NOT EXISTS monitor_pv(ts TIMESTAMP, callbackcounts INT, npvon  INT, npvoff INT);");
+        taos_free_result(result);
+        printf("Table monitor_pv created!\n");
     }
     const char *sql = "insert into monitor_pv values (?, ?, ?, ?);";
     //const char *sql = "insert into ? using pv tags(0) values (?, ?, ?, ?);";
@@ -497,9 +530,10 @@ int HB2TD(TAOS * taos, int callBackCounts, int nPvOn, int nPvOff)
  * @param msg 
  */
 void checkErrorCode(TAOS_STMT *stmt, int code, const char* msg) {
-  if (code != 0) {
-    printf("%s. error: %s\n", msg, taos_stmt_errstr(stmt));
-    //taos_stmt_close(stmt);
-    //exit(EXIT_FAILURE);
-  }
+    if (code != 0) {
+        printf("code: %d\n", code);
+        printf("%s. error: %s\n", msg, taos_stmt_errstr(stmt));
+        taos_stmt_close(stmt);
+        //exit(EXIT_FAILURE);
+    }
 }
