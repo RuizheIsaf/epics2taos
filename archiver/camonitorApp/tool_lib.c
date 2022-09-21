@@ -660,27 +660,70 @@ int connect_pvs (pv* pvs, int nPvs)
  *
  **************************************************************************-*/
 #define NATIVE_DBR_TIME(T)   ((struct T *)value)->stamp;
-
 epicsTimeStamp dbr2ts (const void *value, unsigned type)
 {
     epicsTimeStamp rst={0,0};
     switch (type) {
         case DBR_TIME_STRING:
-            rst = NATIVE_DBR_TIME(dbr_time_string);
+            rst = NATIVE_DBR_TIME(dbr_time_string); break;
         case DBR_TIME_SHORT:
-            rst = NATIVE_DBR_TIME(dbr_time_short);
+            rst = NATIVE_DBR_TIME(dbr_time_short); break;
         case DBR_TIME_FLOAT:
-            rst = NATIVE_DBR_TIME(dbr_time_float);
+            rst = NATIVE_DBR_TIME(dbr_time_float); break;
         case DBR_TIME_ENUM:
-            rst = NATIVE_DBR_TIME(dbr_time_enum);
+            rst = NATIVE_DBR_TIME(dbr_time_enum); break;
         case DBR_TIME_CHAR:
-            rst = NATIVE_DBR_TIME(dbr_time_char);
+            rst = NATIVE_DBR_TIME(dbr_time_char); break;
         case DBR_TIME_LONG:
-            rst = NATIVE_DBR_TIME(dbr_time_long);
+            rst = NATIVE_DBR_TIME(dbr_time_long); break;
         case DBR_TIME_DOUBLE:
-            rst = NATIVE_DBR_TIME(dbr_time_double);
-        default: ;//printf("can't reconize data type\n");
+            rst = NATIVE_DBR_TIME(dbr_time_double); break;
+        default: 
+            break;//printf("can't reconize data type\n");
     }
         return rst;
 }
 
+#define PRN_DBR_STATUS(T) sprintf(str,"%s",stat_to_str(((struct T *)value)->status))
+
+char *dbr2status(const void *value, unsigned type)
+{
+    static char str[DBR_PRINT_BUFFER_SIZE];
+    switch (type)
+    {
+    case DBR_TIME_STRING/* constant-expression */:
+        /* code */
+        PRN_DBR_STATUS(dbr_time_string);     
+        break;
+    case DBR_TIME_SHORT:  PRN_DBR_STATUS(dbr_time_short); break;
+    case DBR_TIME_FLOAT:  PRN_DBR_STATUS(dbr_time_float); break;
+    case DBR_TIME_ENUM:   PRN_DBR_STATUS(dbr_time_enum); break;
+    case DBR_TIME_CHAR:   PRN_DBR_STATUS(dbr_time_char); break;
+    case DBR_TIME_LONG:   PRN_DBR_STATUS(dbr_time_long); break;
+    case DBR_TIME_DOUBLE: PRN_DBR_STATUS(dbr_time_double); break;
+    default:
+        break;
+    }
+}
+
+#define PRN_DBR_SEVERITY(T) sprintf(str,"%s",stat_to_str(((struct T *)value)->severity))
+
+char *dbr2sev(const void *value, unsigned type)
+{
+    static char str[DBR_PRINT_BUFFER_SIZE];
+    switch (type)
+    {
+    case DBR_TIME_STRING/* constant-expression */:
+        /* code */
+        PRN_DBR_SEVERITY(dbr_time_string);     
+        break;
+    case DBR_TIME_SHORT:  PRN_DBR_SEVERITY(dbr_time_short); break;
+    case DBR_TIME_FLOAT:  PRN_DBR_SEVERITY(dbr_time_float); break;
+    case DBR_TIME_ENUM:   PRN_DBR_SEVERITY(dbr_time_enum); break;
+    case DBR_TIME_CHAR:   PRN_DBR_SEVERITY(dbr_time_char); break;
+    case DBR_TIME_LONG:   PRN_DBR_SEVERITY(dbr_time_long); break;
+    case DBR_TIME_DOUBLE: PRN_DBR_SEVERITY(dbr_time_double); break;
+    default:
+        break;
+    }
+}

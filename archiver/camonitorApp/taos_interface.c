@@ -180,8 +180,10 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
 {
     TAOS_RES* result;
 
+    /*
     char str[256];
     char* dbrstr = dbr2str (data.data, data.type);
+    //printf("data.type:%ld\n", data.type);
     char* buf[3], *p;
     int i = 0;
     p = NULL;
@@ -195,9 +197,28 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
     char* ts = buf[0];
     char* status = buf[1];
     char* severity = buf[2];
-    char* value = val2str (data.data, data.type,0);
-    epicsTimeStamp ets = dbr2ts(data.data, data.type);//ets.secPastEpoch和ets.nsec均是uint类型
+    */
 
+    
+    epicsTimeStamp ets = dbr2ts(data.data, data.type);//ets.secPastEpoch和ets.nsec均是uint类型
+    char *status = dbr2status(data.data, data.type);
+    char *severity = dbr2sev(data.data, data.type);
+    char* value = val2str (data.data, data.type,0);
+    
+    /*
+    switch (data.type)
+    {
+    case :
+        
+        break;
+    
+    default:
+        break;
+    }
+    */
+
+    //printf("dbr2st:%s\n", dbr2status(data.data, data.type));
+    //printf("dbr2sev:%s\n", severity);
     //printf("ets.secPastEpoch:%u,ets.nsec:%d\n", ets.secPastEpoch, ets.nsec);
 
     if(ets.secPastEpoch != 0) {
