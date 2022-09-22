@@ -37,13 +37,14 @@ fifo_error fifoWrite(FIFO *fifo, ARCHIVE_ELEMENT data)
     int out = fifo->read_position;
     fifo->buff[in]=data;
 
-    //debug fifo
-    //printf("-----------------------\n");
-    //printf("fifo write called\n");
-    //printf("pvname: %s\n",fifo->buff->pvname);
-    //printf("input index: %d, output index: %d\n", in ,out);
-    //printf("new value is %s\n",val2str (fifo->buff[in].data, data.type,0));
-    //printf("-----------------------\n");
+    #ifdef DEBUG
+    printf("-----------------------\n");
+    printf("fifo write called\n");
+    printf("pvname: %s\n",fifo->buff->pvname);
+    printf("input index: %d, output index: %d\n", in ,out);
+    printf("new value is %s\n",val2str (fifo->buff[in].data, data.type,0));
+    printf("-----------------------\n");
+    #endif
 
     if (in == fifo->max_size - 1 )
     {
@@ -95,12 +96,13 @@ fifo_error fifoRead(FIFO *fifo, ARCHIVE_ELEMENT *data )
         {
             rtn = FIFO_ERROR;
         }
-    //debug fifo
-    //printf("-----------------------\n");
-    //printf("fifo read called\n");
-    //printf("input index: %d, output index: %d\n", in ,out);
-    //printf("read value is %s\n",val2str (data->data, data->type,0));
-    //printf("-----------------------\n");
+    #ifdef DEBUG
+    printf("-----------------------\n");
+    printf("fifo read called\n");
+    printf("input index: %d, output index: %d\n", in ,out);
+    printf("read value is %s\n",val2str (data->data, data->type,0));
+    printf("-----------------------\n");
+    #endif
     }
     epicsMutexUnlock(fifo->fifoLock);
     return rtn;
