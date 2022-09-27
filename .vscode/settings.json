@@ -8,6 +8,7 @@
         "utility": "c",
         "archiver.h": "c",
         "random": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "tool_lib.h": "c"
     }
 }

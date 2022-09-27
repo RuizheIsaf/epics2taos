@@ -33,7 +33,15 @@ ARCHIVER*  archive_initial()
     // const char* host = "127.0.0.1";
     // const char* user = "root";
     // const char* passwd = "taosdata";
-    archiver->taos= TaosConnect();
+    
+    
+    archiver->taos = TaosConnect();
+    /*
+    Archiver->stmt = taos_stmt_init(archiver->taos);
+    const char *sql = "insert into ? using pv tags(0) values (?, ?, ?, ?);";
+    int code  = taos_stmt_prepare(Archiver->stmt,sql, 0);//0表示会自动判断sql语句的长度
+    checkErrorCode(Archiver->stmt, code, "failed to excute taos_stmt_prepare\n");
+    */
     return archiver;
 }
 

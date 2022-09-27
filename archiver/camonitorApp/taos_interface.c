@@ -179,7 +179,7 @@ int PVStatus2TD(TAOS * taos, pv * ppv, int status)
 int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
 {
     TAOS_RES* result;
-
+    int errno;
     /*
     char str[256];
     char* dbrstr = dbr2str (data.data, data.type);
@@ -200,76 +200,168 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
     */
 
     
-    epicsTimeStamp ets = dbr2ts(data.data, data.type);//ets.secPastEpoch和ets.nsec均是uint类型
+    epicsTimeStamp ets = dbr2ts(data.data, data.type);//ets.。secPastEpoch和ets.nsec均是uint类型
     char *status = dbr2status(data.data, data.type);
     char *severity = dbr2sev(data.data, data.type);
-    char* value = val2str (data.data, data.type,0);
+    char* value = val2str(data.data, data.type,0);
     
-    /*
-    switch (data.type)
-    {
-    case :
-        
-        break;
+    unsigned base_type;
+    base_type = data.type % (LAST_TYPE+1);
+
+    if (data.type == DBR_STSACK_STRING || data.type == DBR_CLASS_NAME)
+        base_type = DBR_STRING;
     
-    default:
-        break;
+    char *valstr;
+    char valch;
+    float valf;
+    double vald;
+    int vali;
+    long vall;
+    char sql[256];
+    char *sql1;
+    
+    if(ets.secPastEpoch != 0) {
+        unsigned long ts1 = ets.secPastEpoch;//uint类型 * 1000会溢出，先转为ulong型
+        unsigned long ts2 = ets.nsec;
+        //secPastEpoch时间跟unix时间差了1970到1990的这2年，即7305 * 24 * 60 * 60 s 
+        //tdengine需要的时间戳以毫秒为单位的时间戳
+        ts1 = (ts1  + 631152000) * 1000 + ts2 / 1000000;
+        switch (base_type){
+        case DBR_STRING:
+            valstr = val_str(data.data, data.type, 0);
+            sprintf(sql, "insert into pvs.`%s` using pvs.pvstr tags(0) values (%lu, \'%s\', \'%s\', \'%s\'); \n ", data.pvname, ts1, valstr, status, severity);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+            if(result == NULL || errno != 0) {
+                printf("failed to insert row: %s, reason: %s\n", sql, taos_errstr(result));
+                syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
+                taos_free_result(result);
+                sql1 = "create stable if not exists pvstr(ts TIMESTAMP, val NCHAR(20), status NCHAR(20), severity NCHAR(20)) tags(groupId INT);";
+                checkResult(errno, sql1, sql);
+            }
+            //printf("sql:%s\n", sql);
+            //printf("valstr:%s\n", valstr);
+            break;
+        case DBR_FLOAT:
+            valf = val_float(data.data, data.type, 0);
+            sprintf(sql, "insert into pvs.`%s` using pvs.pvf tags(0) values (%lu, \'%f\', \'%s\', \'%s\'); \n ", data.pvname, ts1, valf, status, severity);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+            if(result == NULL || errno != 0) {
+                printf("failed to insert row: %s, reason: %s\n", sql, taos_errstr(result));
+                syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
+                taos_free_result(result);
+                sql1 = "create stable if not exists pvf(ts TIMESTAMP, val FLOAT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);";
+                checkResult(errno, sql1, sql);
+            }
+            //printf("sql:%s\n", sql);
+            //printf("valfloat:%f\n", valf);
+            break;
+        case DBR_DOUBLE:
+            vald = val_double(data.data, data.type, 0);
+            sprintf(sql, "insert into pvs.`%s` using pvs.pvd tags(0) values (%lu, \'%f\', \'%s\', \'%s\'); \n ", data.pvname, ts1, vald, status, severity);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+            if(result == NULL || errno != 0) {
+                printf("failed to insert row: %s, reason: %s\n", sql, taos_errstr(result));
+                syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
+                taos_free_result(result);
+                sql1 = "create stable if not exists pvd(ts TIMESTAMP, val DOUBLE, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);";
+                checkResult(errno, sql1, sql);
+            }
+            //printf("sql:%s\n", sql);
+            //printf("valdouble:%f\n", vald);
+            break;
+        case DBR_CHAR:
+            valch = val_char(data.data, data.type, 0);
+            sprintf(sql, "insert into pvs.`%s` using pvs.pvch tags(0) values (%lu, \'%s\', \'%s\', \'%s\'); \n ", data.pvname, ts1, valch, status, severity);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+            if(result == NULL || errno != 0) {
+                printf("failed to insert row: %s, reason: %s\n", sql, taos_errstr(result));
+                syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
+                taos_free_result(result);
+                sql1 = "create stable if not exists pvch(ts TIMESTAMP, val BINARY, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);";
+                checkResult(errno, sql1, sql);
+            }
+            //printf("sql:%s\n", sql);
+            //printf("valch:%s\n", valch);
+            break;
+        case DBR_INT:   
+            vali = val_int(data.data, data.type, 0);
+            sprintf(sql, "insert into pvs.`%s` using pvs.pvi tags(0) values (%lu, \'%d\', \'%s\', \'%s\'); \n ", data.pvname, ts1, vali, status, severity);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+            if(result == NULL || errno != 0) {
+                printf("failed to insert row: %s, reason: %s\n", sql, taos_errstr(result));
+                syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
+                taos_free_result(result);
+                sql1 = "create stable if not exists pvi(ts TIMESTAMP, val INT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);";
+                checkResult(errno, sql1, sql);
+            }
+            //printf("sql:%s\n", sql);
+            //printf("vaint:%d\n", vali);
+            break;
+        case DBR_LONG:
+            vall = val_long(data.data, data.type, 0);
+            sprintf(sql, "insert into pvs.`%s` using pvs.pvl tags(0) values (%lu, \'%ld\', \'%s\', \'%s\'); \n ", data.pvname, ts1, vall, status, severity);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+            if(result == NULL || errno != 0) {
+                printf("failed to insert row: %s, reason: %s\n", sql, taos_errstr(result));
+                syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
+                taos_free_result(result);
+                sql1 = "create stable if not exists pvl(ts TIMESTAMP, val BIGINT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);";
+                checkResult(errno, sql1, sql);
+            }
+            //printf("sql:%s\n", sql);
+            //printf("vallong:%ld\n", vall);
+            break;
+        default:
+            break;
+        }
+
+
     }
-    */
+    
 
     //printf("dbr2st:%s\n", dbr2status(data.data, data.type));
     //printf("dbr2sev:%s\n", severity);
     //printf("ets.secPastEpoch:%u,ets.nsec:%d\n", ets.secPastEpoch, ets.nsec);
-
+    /*
     if(ets.secPastEpoch != 0) {
-        TAOS_STMT *stmt = taos_stmt_init(taos);
-        const char *sql = "insert into ? using pv tags(0) values (?, ?, ?, ?);";
-        //const char *sql = "insert into ? using pv tags(0) values (?, ?, ?, ?);";
-        int code  = taos_stmt_prepare(stmt,sql, 0);//0表示会自动判断sql语句的长度
-        checkErrorCode(stmt, code, "failed to excute taos_stmt_prepare\n");
-
         unsigned long ts1 = ets.secPastEpoch;//uint类型 * 1000会溢出，先转为ulong型
         unsigned long ts2 = ets.nsec;
         //secPastEpoch时间跟unix时间差了1970到1990的这2年，即7305 * 24 * 60 * 60 s 
         //tdengine需要的时间戳以毫秒为单位的时间戳
         ts1 = (ts1  + 631152000) * 1000 + ts2 / 1000000;
         
-        char tbname[64];
-        sprintf(tbname, "`%s`", data.pvname);
+        TAOS_STMT *stmt = taos_stmt_init(taos);
+        const char *sql = "insert into ? using pv tags(0) values (?, ?, ?, ?);";
+        //const char *sql = "insert into ? using pv tags(0) values (?, ?, ?, ?);";
+        int code  = taos_stmt_prepare(stmt,sql, 0);//0表示会自动判断sql语句的长度
+        checkErrorCode(stmt, code, "failed to excute taos_stmt_prepare\n");
+        
         code = taos_select_db(taos, "pvs");
         if (code != 0) {
             //database not exist
             printf("Database not specified or available\n");
-            result = taos_query(Archiver->taos, "create database if not exists pvs;");
+            result = taos_query(taos, "create database if not exists pvs;");
             taos_free_result(result);
             printf("Database pvs created!\n");
-            result = taos_query(Archiver->taos, "use pvs;");
+            result = taos_query(taos, "use pvs;");
             taos_free_result(result);
             printf("Using database pvs...\n");
-            result = taos_query(Archiver->taos, "create stable if not exists pv(ts TIMESTAMP, val FLOAT, status NCHAR(10), severity NCHAR(10)) tags(groupId INT);");
+            result = taos_query(taos, "create stable if not exists pv(ts TIMESTAMP, val FLOAT, status NCHAR(10), severity NCHAR(10)) tags(groupId INT);");
             taos_free_result(result);
             printf("Stable pv created!\n");
         }
+        
+        char tbname[64];
+        sprintf(tbname, "`%s`", data.pvname);
         //printf("tbname: %s\n", tbname);
         code = taos_stmt_set_tbname(stmt, tbname);
         checkErrorCode(stmt, code, "failed to execute taos_stmt_set_tbname\n");
-
-        /*
-        ROW rowtest = {ts1, strtol(value, NULL, 10)};
-        TAOS_BIND values[2];
-        values[0].buffer_type = TSDB_DATA_TYPE_TIMESTAMP;
-        values[0].buffer_length = sizeof(char*);
-        values[0].length = &values[0].buffer_length;
-        values[0].is_null = NULL;
-
-        values[1].buffer_type = TSDB_DATA_TYPE_INT;
-        values[1].buffer_length = sizeof(int);
-        values[1].length = &values[1].buffer_length;
-        values[1].is_null = NULL;
-
-        values[0].buffer = &rowtest.ts;
-        values[1].buffer = &rowtest.val;
-        */
 
         ROWPV rowpv = {ts1, strtol(value, NULL, 10), status, severity};
 
@@ -311,8 +403,9 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
         //printf("successfully inserted %d rows\n", affectedRows);
         // close
         taos_stmt_close(stmt);
+        
     }
-
+    */
 
     /*
     //printf(dbr2str (data.data, data.type));
@@ -557,4 +650,60 @@ void checkErrorCode(TAOS_STMT *stmt, int code, const char* msg) {
         //taos_stmt_close(stmt);
         //exit(EXIT_FAILURE);
     }
+}
+
+void checkResult(int errno, char* sql1, char* sql2) {
+    TAOS_RES *result;
+    char sql[265];
+    if(errno == -2147482752) {//"Database not specified or available"，建库并且建超级表，之后再执行一遍插入
+        printf("Database not specified or available\n");
+        result = taos_query(Archiver->taos, "create database if not exists pvs;");
+        taos_free_result(result);
+        printf("Database pvs created!\n");
+        result = taos_query(Archiver->taos, "use pvs;");
+        taos_free_result(result);
+        printf("Using database pvs...\n");
+        result = taos_query(Archiver->taos, sql1);
+        taos_free_result(result);
+        printf("Stable created!\n");
+        result = taos_query(Archiver->taos, sql2);
+        errno = taos_errno(result);
+    } 
+    if(errno == -2147482782) {//"Table does not exist"，有库没表，建超级表，之后再执行一次插入
+        printf("Table does not exist\n");
+        result = taos_query(Archiver->taos, "use pvs;");
+        taos_free_result(result);
+        printf("Using database pvs...\n");
+        result = taos_query(Archiver->taos, sql1);
+        taos_free_result(result);
+        printf("Stable created!\n");
+        result = taos_query(Archiver->taos, sql2);
+        errno = taos_errno(result);
+    } 
+    //exit(1);
+    //通过返回的errono判断是否断线，如果断线则重新连接
+    //错误代码参照：https://www.bookstack.cn/read/TDengin-2.0-zh/9436ce1aea0b27a2.md
+    //“Unable to establish connection”：-2147483637
+    //“Disconnected from service”：-2147483117
+    if(errno == -2147483637 || errno == -2147483117) {
+    
+        syslog(LOG_USER|LOG_INFO,"TDengine disconnected error\n");//将错误写入日志
+        while(Archiver->taos == NULL) {
+            Archiver->taos = TaosConnect();//如果连接中断，重新连接
+            sleep(5);
+        }     
+    }
+
+}
+
+void executeSQL(TAOS *taos, const char *sql) {
+  TAOS_RES *res = taos_query(taos, sql);
+  int       code = taos_errno(res);
+  if (code != 0) {
+    printf("%s\n", taos_errstr(res));
+    taos_free_result(res);
+    taos_close(taos);
+    //exit(EXIT_FAILURE);
+  }
+  taos_free_result(res);
 }

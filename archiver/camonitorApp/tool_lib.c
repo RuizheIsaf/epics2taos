@@ -727,3 +727,54 @@ char *dbr2sev(const void *value, unsigned type)
         break;
     }
 }
+
+char *val_str(const void *v, unsigned type, int index)
+{
+#define STR 500
+    static char str[STR];
+    char ch;
+    void *val_ptr;
+    val_ptr = dbr_value_ptr(v, type);
+    epicsStrnEscapedFromRaw(str, STR, ((dbr_string_t*) val_ptr)[index], strlen(((dbr_string_t*) val_ptr)[index]));
+    return str;
+}
+
+float val_float(const void *v, unsigned type, int index) 
+{   
+    void *val_ptr;
+    val_ptr = dbr_value_ptr(v, type);
+    float f = ((dbr_float_t*) val_ptr)[index];
+    return f;
+}
+
+double val_double(const void *v, unsigned type, int index) 
+{
+    void *val_ptr;
+    val_ptr = dbr_value_ptr(v, type);
+    double d = ((dbr_double_t*) val_ptr)[index];
+    return d;
+}
+
+char val_char(const void *v, unsigned type, int index)
+{
+    char ch;
+    void *val_ptr;
+    val_ptr = dbr_value_ptr(v, type);
+    ch = ((dbr_char_t*) val_ptr)[index];
+    return ch;
+}
+
+int val_int(const void *v, unsigned type, int index) 
+{   
+    void *val_ptr;
+    val_ptr = dbr_value_ptr(v, type);
+    int i = ((dbr_int_t*) val_ptr)[index];
+}
+
+long val_long(const void *v, unsigned type, int index) 
+{
+    void *val_ptr;
+    val_ptr = dbr_value_ptr(v, type);
+    long l = ((dbr_long_t*) val_ptr)[index];
+
+}

@@ -104,6 +104,13 @@ extern int  connect_pvs (pv *pvs, int nPvs );
 extern epicsTimeStamp dbr2ts (const void *value, unsigned type);
 extern char *dbr2status(const void *value, unsigned type);
 extern char *dbr2sev(const void *value, unsigned type);
+extern char *val_str(const void *v, unsigned type, int index);
+extern float val_float(const void *v, unsigned type, int index);
+extern double val_double(const void *v, unsigned type, int index); 
+extern char val_char(const void *v, unsigned type, int index);
+extern int val_int(const void *v, unsigned type, int index);
+extern long val_long(const void *v, unsigned type, int index);
+
 /*
  * no additions below this endif
  */
