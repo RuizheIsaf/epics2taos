@@ -72,7 +72,7 @@ int PVStatus2TD(TAOS * taos, pv * ppv, int status)
             printf("Stable st created!\n");
             sprintf(sql, "insert into status.`%s` using status.st tags(0) values (\'%s\', %d) \n" , ppv->name, timeText, status);
             result = taos_query(Archiver->taos, sql);
-            errno = taos_errno(result);
+            //errno = taos_errno(result);
         } 
         if(errno == -2147482782) {//"Table does not exist"，有库没表，建超级表，之后再执行一次插入
             printf("Table does not exist\n");
@@ -84,7 +84,7 @@ int PVStatus2TD(TAOS * taos, pv * ppv, int status)
             printf("Stable st created!\n");
             sprintf(sql, "insert into status.`%s` using status.st tags(0) values (\'%s\', %d) \n" , ppv->name, timeText, status);
             result = taos_query(Archiver->taos, sql);
-            errno = taos_errno(result);
+            //errno = taos_errno(result);
         }
 
         //通过返回的errono判断是否断线，如果断线则重新连接
@@ -321,6 +321,7 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
             break;
         }
 
+        taos_free_result(result);
 
     }
     
@@ -519,7 +520,7 @@ int HB2TD(TAOS * taos, int callBackCounts, int nPvOn, int nPvOff)
             taos_free_result(result);
             sprintf(sql, "insert into monitor.monitor_pv values (\'%s\', %d, %d, %d) \n" , timeText, callBackCounts, nPvOn, nPvOff);
             result = taos_query(Archiver->taos, sql);
-            errno = taos_errno(result);
+            //errno = taos_errno(result);
         } 
         if(errno == -2147482782) {//"Table does not exist"，有库没表，建超级表，之后再执行一次插入
             printf("Table does not exist\n");
@@ -531,7 +532,7 @@ int HB2TD(TAOS * taos, int callBackCounts, int nPvOn, int nPvOff)
             printf("Table monitor_pv created!\n");
             sprintf(sql, "insert into monitor.monitor_pv values (\'%s\', %d, %d, %d) \n" , timeText, callBackCounts, nPvOn, nPvOff);
             result = taos_query(Archiver->taos, sql);
-            errno = taos_errno(result);
+            //errno = taos_errno(result);
         }
 
         //exit(1);
@@ -666,8 +667,8 @@ void checkResult(int errno, char* sql1, char* sql2) {
         result = taos_query(Archiver->taos, sql1);
         taos_free_result(result);
         printf("Stable created!\n");
-        result = taos_query(Archiver->taos, sql2);
-        errno = taos_errno(result);
+        result = taos_query(Archiver->taos, sql2);   
+        //errno = taos_errno(result);
     } 
     if(errno == -2147482782) {//"Table does not exist"，有库没表，建超级表，之后再执行一次插入
         printf("Table does not exist\n");
@@ -678,7 +679,8 @@ void checkResult(int errno, char* sql1, char* sql2) {
         taos_free_result(result);
         printf("Stable created!\n");
         result = taos_query(Archiver->taos, sql2);
-        errno = taos_errno(result);
+        //errno = taos_errno(result);
+        
     } 
     //exit(1);
     //通过返回的errono判断是否断线，如果断线则重新连接
@@ -693,6 +695,7 @@ void checkResult(int errno, char* sql1, char* sql2) {
             sleep(5);
         }     
     }
+    taos_free_result(result);
 
 }
 
