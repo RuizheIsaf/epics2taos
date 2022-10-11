@@ -181,7 +181,6 @@ static void connectionCallback(struct connection_handler_args args)
         print_time_val_sts(ppv, reqElems);
         PVStatus2TD(Archiver->taos, ppv, 0);//不在线写0
     }
-
 }
 
 
