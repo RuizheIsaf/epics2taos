@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/linux-x86_64/caMonitor",
             "args": [
-                "${workspaceFolder}/bin/linux-x86_64/ioctest"
+                "${workspaceFolder}/bin/linux-x86_64/all_pv"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

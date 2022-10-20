@@ -32,7 +32,9 @@
         "list": "c",
         "vector": "c",
         "taos_interface.h": "c",
-        "loadconfig.h": "c"
+        "loadconfig.h": "c",
+        "algorithm": "c"
     },
-    "C_Cpp.errorSquiggles": "Enabled"
+    "C_Cpp.errorSquiggles": "Enabled",
+    "C_Cpp.dimInactiveRegions": true
 }

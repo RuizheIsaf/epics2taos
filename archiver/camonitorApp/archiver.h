@@ -44,6 +44,7 @@ typedef struct{
     pv**            nodelist;
     int             nPv;
     epicsEventId    evt_newdata_in;
+    TAOS_STMT       *stmt;
 } ARCHIVER;
 
 ARCHIVER* Archiver;
