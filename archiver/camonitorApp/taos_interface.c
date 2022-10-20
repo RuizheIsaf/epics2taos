@@ -131,13 +131,15 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
     long vall;
     char sql[256];
     char *sql1;
+
+    
     
     if(ets.secPastEpoch != 0) {
         unsigned long ts1 = ets.secPastEpoch;//uint类型 * 1000会溢出，先转为ulong型
         unsigned long ts2 = ets.nsec;
         //secPastEpoch时间跟unix时间差了1970到1990的这2年，即7305 * 24 * 60 * 60 s 
         //tdengine需要的时间戳以毫秒为单位的时间戳
-        ts1 = (ts1  + 631152000) * 1000 + ts2 / 1000000;
+        ts1 = (ts1 + 631152000)*1000000000 + ts2;
         switch (base_type){
         case DBR_STRING:
             valstr = val_str(data.data, data.type, 0);
@@ -348,7 +350,7 @@ void checkResult(int errno, char* sql1, char* sql2) {
     char sql[265];
     if(errno == -2147482752) {//"Database not specified or available"，建库并且建超级表，之后再执行一遍插入
         printf("Database not specified or available\n");
-        result = taos_query(Archiver->taos, "create database if not exists pvs;");
+        result = taos_query(Archiver->taos, "create database if not exists pvs precison 'ns';");
         taos_free_result(result);
         printf("Database pvs created!\n");
         result = taos_query(Archiver->taos, "use pvs;");
@@ -438,20 +440,23 @@ epicsUInt16 dbr2taosbind(TAOS_BIND *values, ARCHIVE_ELEMENT data)
     uint64_t  ts1 = ts.secPastEpoch;//uint类型 * 1000会溢出，先转为ulong型
     uint64_t  ts2 = ts.nsec;
 
-    /*
-    if (data.type == 19 )              //表建立的不对。。EPICS的long长度为4字节，表里设置成了8字节
-    {
-      return;
-    } 
-    */
-                                                                                                
-    char *status = dbr2status(data.data, data.type);                                         
-    char *severity = dbr2sev(data.data, data.type);                                          
-    
     //secPastEpoch时间跟unix时间差了1970到1990的这2年，即7305 * 24 * 60 * 60 s 
     //tdengine需要的时间戳以毫秒为单位的时间戳
     uint64_t taos_ts;
-    taos_ts = (ts1 + 631152000)*1000 + ts2/100000;
+    taos_ts = (ts1 + 631152000)*1000000000 + ts2;
+    //taos_ts = (ts1 + 631152000)*1000;
+    //printf("tao_ts:%lu\n", taos_ts);
+    /*
+    if(strcmp(data.pvname, "zheng1:calc3") == 0) {
+        printf("pvname:%s, nanoseconds:%lu\n", data.pvname,ts2);
+        printf("tao_ts-------------------:%lu\n", taos_ts);
+    }
+    */
+                                                                                           
+    char *status = dbr2status(data.data, data.type);                                         
+    char *severity = dbr2sev(data.data, data.type);                                          
+    
+    
     switch (data.type)
     {
     case DBR_TIME_STRING:     
@@ -520,7 +525,7 @@ int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
         if (code != 0) {
             //database not exist
             printf("Database not specified or available\n");
-            result = taos_query(Archiver->taos, "create database if not exists pvs;");
+            result = taos_query(Archiver->taos, "create database if not exists pvs precison 'ns';");
             taos_free_result(result);
             printf("Database pvs created!\n");
             result = taos_query(Archiver->taos, "use pvs;");
@@ -592,7 +597,7 @@ int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
         printf("----------------------\n");
     }
         
-    if (batch_count[data.type] > 50)//同类型数据绑定超过50条时执行一次taos_stmt_execute
+    if (batch_count[data.type] > 1)//同类型数据绑定超过50条时执行一次taos_stmt_execute
     {
         //printf("archiving pv: %s\n",data.pvname);
         //printf("type is %lu\n",data.type);
