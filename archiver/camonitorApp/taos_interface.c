@@ -136,7 +136,7 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
         unsigned long ts2 = ets.nsec;
         //secPastEpoch时间跟unix时间差了1970到1990的这2年，即7305 * 24 * 60 * 60 s 
         //tdengine需要的时间戳以毫秒为单位的时间戳
-        ts1 = (ts1  + 631152000) * 1000 + ts2 / 1000000;
+        ts1 = (ts1 + 631152000)*1000000000 + ts2;
         switch (base_type){
         case DBR_STRING:
             valstr = val_str(data.data, data.type, 0);
@@ -227,7 +227,7 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
                 printf("failed to insert row: %s, reason: %s\n", sql, taos_errstr(result));
                 syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
                 taos_free_result(result);
-                sql1 = "create stable if not exists pvl(ts TIMESTAMP, val BIGINT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);";
+                sql1 = "create stable if not exists pvl(ts TIMESTAMP, val INT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);";
                 checkResult(errno, sql1, sql);
             }
             //printf("sql:%s\n", sql);
@@ -347,7 +347,7 @@ void checkResult(int errno, char* sql1, char* sql2) {
     char sql[265];
     if(errno == -2147482752) {//"Database not specified or available"，建库并且建超级表，之后再执行一遍插入
         printf("Database not specified or available\n");
-        result = taos_query(Archiver->taos, "create database if not exists pvs;");
+        result = taos_query(Archiver->taos, "create database if not exists pvs precision 'ns';");
         taos_free_result(result);
         printf("Database pvs created!\n");
         result = taos_query(Archiver->taos, "use pvs;");
@@ -436,15 +436,24 @@ epicsUInt16 dbr2taosbind(TAOS_BIND *values, ARCHIVE_ELEMENT data)
     ts = dbr2ts(data.data, data.type);
     uint64_t  ts1 = ts.secPastEpoch;//uint类型 * 1000会溢出，先转为ulong型
     uint64_t  ts2 = ts.nsec;
-    
-                                                                                                
-    char *status = dbr2status(data.data, data.type);                                         
-    char *severity = dbr2sev(data.data, data.type);                                          
-    
+
+
     //secPastEpoch时间跟unix时间差了1970到1990的这2年，即7305 * 24 * 60 * 60 s 
     //tdengine需要的时间戳以毫秒为单位的时间戳
     uint64_t taos_ts;
-    taos_ts = (ts1 + 631152000)*1000 + ts2/100000;
+    taos_ts = (ts1 + 631152000)*1000000000 + ts2;
+    //taos_ts = (ts1 + 631152000)*1000;
+    //printf("tao_ts:%lu\n", taos_ts);
+    /*
+    if(strcmp(data.pvname, "zheng1:calc3") == 0) {
+        printf("pvname:%s, nanoseconds:%lu\n", data.pvname,ts2);
+        printf("tao_ts-------------------:%lu\n", taos_ts);
+    }
+    */
+                                                                                           
+    char *status = dbr2status(data.data, data.type);                                         
+    char *severity = dbr2sev(data.data, data.type);                                          
+    
     switch (data.type)
     {
     case DBR_TIME_STRING:     
@@ -475,12 +484,21 @@ epicsUInt16 dbr2taosbind(TAOS_BIND *values, ARCHIVE_ELEMENT data)
     return 1;
 }
 
-#define SQL_STR  "insert into ? using pvstr tags(0) values (?, ?, ?, ?);"
-#define SQL_FLOAT  "insert into ? using pvf tags(0) values (?, ?, ?, ?);"
+
+#define SQL_STR     "insert into ? using pvstr tags(0) values (?, ?, ?, ?);"
+#define SQL_FLOAT   "insert into ? using pvf tags(0) values (?, ?, ?, ?);"
 #define SQL_DOUBLE  "insert into ? using pvd tags(0) values (?, ?, ?, ?);"
-#define SQL_CHAR  "insert into ? using pvch tags(0) values (?, ?, ?, ?);"
-#define SQL_INT  "insert into ? using pvi tags(0) values (?, ?, ?, ?);"
-#define SQL_LONG "insert into ? using pvl tags(0) values (?, ?, ?, ?);"
+#define SQL_CHAR    "insert into ? using pvch tags(0) values (?, ?, ?, ?);"
+#define SQL_INT     "insert into ? using pvi tags(0) values (?, ?, ?, ?);"
+#define SQL_LONG    "insert into ? using pvl tags(0) values (?, ?, ?, ?);"
+
+#define SQL_CREATE_STR    "create stable if not exists pvstr(ts TIMESTAMP, val NCHAR(20), status NCHAR(20), severity NCHAR(20)) tags(groupId INT);"
+#define SQL_CREATE_FLOAT  "create stable if not exists pvf(ts TIMESTAMP, val FLOAT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);"
+#define SQL_CREATE_DOUBLE "create stable if not exists pvd(ts TIMESTAMP, val DOUBLE, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);"
+#define SQL_CREATE_CHAR   "create stable if not exists pvch(ts TIMESTAMP, val BINARY(1), status NCHAR(20), severity NCHAR(20)) tags(groupId INT);"
+#define SQL_CREATE_INT    "create stable if not exists pvi(ts TIMESTAMP, val INT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);"
+#define SQL_CREATE_LONG   "create stable if not exists pvl(ts TIMESTAMP, val INT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);"
+
 
 int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
 {
@@ -488,40 +506,51 @@ int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
     static TAOS_STMT * stmt[30];
     static int code;
     static epicsUInt16  batch_count[30];
-    
-
-    if (data.type == 19 )              //表建立的不对。。EPICS的long长度为4字节，表里设置成了8字节
-    {
-        return;
-    }
 
     TAOS_RES* result; 
+    //判断是否已经初始化了stmt，已经初始化了就不再重复执行，只需调用已经有的stmt就行
     if (!stmt_initialized)
     {
-        size_t i;
+        //size_t i;
+
         code = taos_select_db(taos, "pvs");
         if (code != 0) {
             //database not exist
             printf("Database not specified or available\n");
-            result = taos_query(Archiver->taos, "create database if not exists pvs;");
+            result = taos_query(Archiver->taos, "create database if not exists pvs precision 'ns';");
             taos_free_result(result);
             printf("Database pvs created!\n");
             result = taos_query(Archiver->taos, "use pvs;");
             taos_free_result(result);
             printf("Using database status...\n");
         }
+
         //添加代码：如果没有超级表，建立超级表。
+        result = taos_query(Archiver->taos, SQL_CREATE_STR);
+        taos_free_result(result);
+        result = taos_query(Archiver->taos, SQL_CREATE_FLOAT);
+        taos_free_result(result);
+        result = taos_query(Archiver->taos, SQL_CREATE_DOUBLE);
+        taos_free_result(result);
+        result = taos_query(Archiver->taos, SQL_CREATE_CHAR);
+        taos_free_result(result);
+        result = taos_query(Archiver->taos, SQL_CREATE_INT);
+        taos_free_result(result);
+        result = taos_query(Archiver->taos, SQL_CREATE_LONG);
+        taos_free_result(result);
+
+        //stmt是个指针数组，长度是30，但实际上只用到了14，15，16，18，19，20这六个
+        //实际上只初始化了数组的这六个位置，分别准备了不同类型的stmt地址存进去，之后根据来的data.type不同使用不同的stmt
         stmt[DBR_TIME_STRING] = taos_stmt_init(taos);  
         stmt[DBR_TIME_FLOAT] = taos_stmt_init(taos);  
         stmt[DBR_TIME_DOUBLE] = taos_stmt_init(taos);  
         stmt[DBR_TIME_CHAR] = taos_stmt_init(taos);  
         stmt[DBR_TIME_INT] = taos_stmt_init(taos);  
-        stmt[DBR_TIME_LONG] = taos_stmt_init(taos);    
+        stmt[DBR_TIME_LONG] = taos_stmt_init(taos); 
         code  = taos_stmt_prepare(stmt[DBR_TIME_STRING],SQL_STR, 0);     //0表示会自动判断sql语句的长度
         checkErrorCode(stmt[DBR_TIME_STRING], code, "failed to excute taos_stmt_prepare\n");
-        stmt[DBR_TIME_FLOAT] = taos_stmt_init(taos);  
         code  = taos_stmt_prepare(stmt[DBR_TIME_FLOAT],SQL_FLOAT, 0);     
-        checkErrorCode(stmt[DBR_TIME_FLOAT], code, "failed to excute taos_stmt_prepare\n");
+        checkErrorCode(stmt[DBR_TIME_FLOAT], code, "failed 他to excute taos_stmt_prepare\n");
         code  = taos_stmt_prepare(stmt[DBR_TIME_DOUBLE],SQL_DOUBLE, 0);     
         checkErrorCode(stmt[DBR_TIME_DOUBLE], code, "failed to excute taos_stmt_prepare\n");
         code  = taos_stmt_prepare(stmt[DBR_TIME_CHAR],SQL_CHAR, 0);     
@@ -530,7 +559,9 @@ int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
         checkErrorCode(stmt[DBR_TIME_INT], code, "failed to excute taos_stmt_prepare\n");
         code  = taos_stmt_prepare(stmt[DBR_TIME_LONG],SQL_LONG, 0);     
         checkErrorCode(stmt[DBR_TIME_LONG], code, "failed to excute taos_stmt_prepare\n");
-        stmt_initialized = true;
+
+        stmt_initialized = true;//初始化完毕，将该静态变量设为真，以后就不会再重复初始化stmt
+
     }
     
     char tbname[64];
@@ -544,13 +575,15 @@ int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
     dbr2taosbind(&values,data);
 
     code = taos_stmt_bind_param(stmt[data.type], values); // bind param
-    if (code ==0)
+
+    if (code == 0)//code = 0 时bind没有报错
     {   
         code = taos_stmt_add_batch(stmt[data.type]); // add batch
         checkErrorCode(stmt[data.type], code, "failed to execute taos_stmt_add_batch");
-        batch_count[data.type] = batch_count[data.type]+1;
+        batch_count[data.type] = batch_count[data.type] + 1;//绑定没问题的话计数加1
     }
-    else
+    else//错误处理
+
     {
         printf("----------------------\n");
         checkErrorCode(stmt[data.type], code, "failed to execute taos_stmt_bind_param");
@@ -559,12 +592,12 @@ int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
         printf("----------------------\n");
     }
         
-    if (batch_count[data.type]>50)
+    if (batch_count[data.type] > 50)//同类型数据绑定超过50条时执行一次taos_stmt_execute
     {
         //printf("archiving pv: %s\n",data.pvname);
         //printf("type is %lu\n",data.type);
         code = taos_stmt_execute(stmt[data.type]);  
-        if (code!=0)
+        if (code != 0)
         {
             printf("----------------------\n");
             checkErrorCode(stmt[data.type], code, "failed to execute taos_stmt_execute");
@@ -572,9 +605,7 @@ int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
             printf("type is %lu\n",data.type);
             printf("----------------------\n");
         }
-        
-        batch_count[data.type] = 0;
+        batch_count[data.type] = 0;//插入完计数重新归零
     }
-    
     //taos_stmt_close(stmt[data.type]);
 }
