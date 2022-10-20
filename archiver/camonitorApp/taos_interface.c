@@ -597,7 +597,7 @@ int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
         printf("----------------------\n");
     }
         
-    if (batch_count[data.type] > 1)//同类型数据绑定超过50条时执行一次taos_stmt_execute
+    if (batch_count[data.type] > 50)//同类型数据绑定超过50条时执行一次taos_stmt_execute
     {
         //printf("archiving pv: %s\n",data.pvname);
         //printf("type is %lu\n",data.type);
