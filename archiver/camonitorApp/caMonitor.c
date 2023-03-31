@@ -15,6 +15,7 @@
 #include <epicsString.h>
 
 
+
 #define VALID_DOUBLE_DIGITS 18  /* Max usable precision for a double */
 static unsigned long reqElems = 0;
 static unsigned long eventMask = DBE_VALUE | DBE_ALARM;   /* Event mask used */
@@ -91,25 +92,49 @@ static void accessRightsCallback(struct access_rights_handler_args args)
 
 static void eventCallback(struct event_handler_args eha)
 {
+    
     pv* pv = eha.usr;
+    void *test = eha.dbr;
     //--------------------------------------
     //通过这个pv指针，可以用来存储特定pv通道的统计信息
     //--------------------------------------
-    
     pv->status = eha.status; 
     if (eha.status == ECA_NORMAL)
     { 
-        pv->callbackCounts++;          
+        pv->callbackCounts++; 
         //pv->dbrType = eha.type;
-        //pv->nElems = eha.count;
-        //pv->value = (void *) eha.dbr;    /* casting away const */
-        //print_time_val_sts(pv, reqElems);
-        //printf("display in camonitor: %s\n",  val2str((void*)eha.dbr, eha.type,0));
-        //fflush(stdout);
-        //pv->value = NULL;
-        archive_pv(eha);   
-    }
-    
+            //pv->nElems = eha.count;
+            //pv->value = (void *) eha.dbr;    /* casting away const */
+            //print_time_val_sts(pv, reqElems);
+            //printf("display in camonitor: %s\n",  val2str((void*)eha.dbr, eha.type,0));
+            //fflush(stdout);
+            //pv->value = NULL;archive_arraypv
+        //archive_pv(eha); 
+        archive_pv(eha); 
+        if (eha.count > 1)
+        {
+            //void * pvalue = dbr2parray(eha.dbr,eha.type);
+            size_t dbrsize = dbr_size_n(eha.type, eha.count);
+            time_t t = time(NULL);
+
+            
+            char *pvname = pv->name;
+            char *status = dbr2status(eha.dbr, eha.type);
+            char *sev = dbr2sev(eha.dbr, eha.type);
+            epicsTimeStamp ets = dbr2ts(eha.dbr, eha.type);
+            uint64_t taosts = epicsTime2int(ets);
+            //printf("pvname:%s\nstatus:%s\nseverity:%s\ntimestamps:%lu\n", pvname, status, severity, taosts);
+            s3_upload(Archiver->s3client, eha.dbr, pvname, dbrsize, taosts);
+            PvArray2TD(Archiver->taos, taosts, pvname, eha.type, eha.count, status, sev);
+            /*
+            int i = 0;
+            for (i = 0; i < 10; i++) {
+                //printf("test%d:%f\n", i, ((struct dbr_time_double*)(&eha.dbr[ 8 * i]))->value);//测试
+                
+            } 
+            */ 
+        }                
+    } 
 }
 
 /*-----------------------
@@ -123,6 +148,7 @@ static void connectionCallback(struct connection_handler_args args)
     pv *ppv = ( pv * ) ca_puser ( args.chid );
     if (args.op == CA_OP_CONN_UP ) {//连接恢复时
         nConn++;
+
 
         if (ppv->onceConnected && ppv->dbfType != ca_field_type(ppv->chid)) {
             /* Data type has changed. Rebuild connection with new type. */
@@ -195,18 +221,21 @@ int main(int argc,char **argv)
     pv** pmynode;
     pmynode  = (pv **) callocMustSucceed(MAX_PV, sizeof(pv*), "caMonitor");
 	if(pmynode){
-	printf("pmynode sucess!");	
-}
+	    printf("pmynode sucess!");	
+    }
     char        *pname[MAX_PV];
     int i;
     char        tempStr[MAX_PV_NAME_LEN];
     char        *pstr;
     FILE        *fp;
     printf("Start!\n");
-
+    aws_initAPI();
+    printf("aws sdk initilized!\n");
     Archiver = archive_initial();
     printf("archiver initilized!\n");
     syslog(LOG_USER|LOG_INFO,"archiver initilized!\n"); 
+
+    //void* dbr = getdbr(Archiver->s3client, "test");
     
     if (argc != 2) {
         fprintf(stderr,"usage: caMonitor filename\n");
@@ -230,6 +259,7 @@ int main(int argc,char **argv)
         npv++;
     }
     fclose(fp);
+    //test_s3();
     // printf("pmynode's address in main func = %p\n",  pmynode);
     // for (i=0; i<npv; i++) {
     //     //pmynode[i]->callbackCounts = 0;
@@ -237,6 +267,7 @@ int main(int argc,char **argv)
     //     //pmynode[i]->isConnected = 0;
     //     printf("pmynode[%d] address in main func = %p\n", i, pmynode[i]);      
     // }
+   
     Archiver->nodelist = pmynode;
     Archiver->nPv = npv;
     printf("Setup monitor!\n");
@@ -261,5 +292,6 @@ int main(int argc,char **argv)
     //archiver_monitor_thread(Archiver);
     /*Should never return from following call*/
     SEVCHK(ca_pend_event(0.0),"ca_pend_event");
+    aws_shutdownAPI();
     return 0;
 }

@@ -17,6 +17,7 @@
 
 
 
+
 #define MAX_PV 2500
 #define MAX_PV_NAME_LEN 40
 
@@ -45,6 +46,7 @@ typedef struct{
     int             nPv;
     epicsEventId    evt_newdata_in;
     TAOS_STMT       *stmt;
+    void            *s3client;
 } ARCHIVER;
 
 ARCHIVER* Archiver;

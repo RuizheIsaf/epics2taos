@@ -32,6 +32,12 @@
 EPICS_BASE = /home/zheng1/EPICS/epics-base
 
 TAOS = /home/zheng1/EPICS/support/taossupport
+S3 = /home/zheng1/EPICS/support/s3support
+# TEST = /home/zheng1/EPICS/support/taossupport
+# AWSCPPSDKCORE = /home/zheng1/EPICS/support/taossupport
+# AWSCPPSDKS3 = /home/zheng1/EPICS/support/taossupport
+# AWSCPPSDKS3CRT = /home/zheng1/EPICS/support/taossupport
+
 # Set RULES here if you want to use build rules from somewhere
 # other than EPICS_BASE:
 #RULES = $(MODULES)/build-rules

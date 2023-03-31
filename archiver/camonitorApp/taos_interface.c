@@ -10,10 +10,9 @@ TAOS* TaosConnect()
     struct ConfigInfo* info = NULL;
     loadFile_configFile("./config.ini", &fileData, &lines);
     parseFile_configFile(fileData, lines, &info);
-    char *host = getInfo_configFile("host", info, lines);
-    char *user = getInfo_configFile("user", info, lines);
-    char *passwd = getInfo_configFile("passwd", info, lines);
-
+    char *host = getInfo_configFile("taos_host", info, lines);
+    char *user = getInfo_configFile("taos_user", info, lines);
+    char *passwd = getInfo_configFile("taos_passwd", info, lines);
     TAOS *taos;
     taos_options(TSDB_OPTION_TIMEZONE, "GMT-8");
     taos = taos_connect(host, user, passwd, "", 0);
@@ -131,15 +130,9 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
     long vall;
     char sql[256];
     char *sql1;
-
-    
     
     if(ets.secPastEpoch != 0) {
-        unsigned long ts1 = ets.secPastEpoch;//uint类型 * 1000会溢出，先转为ulong型
-        unsigned long ts2 = ets.nsec;
-        //secPastEpoch时间跟unix时间差了1970到1990的这2年，即7305 * 24 * 60 * 60 s 
-        //tdengine需要的时间戳以毫秒为单位的时间戳
-        ts1 = (ts1 + 631152000)*1000000000 + ts2;
+        unsigned long ts1 = epicsTime2int(ets);
         switch (base_type){
         case DBR_STRING:
             valstr = val_str(data.data, data.type, 0);
@@ -151,7 +144,7 @@ int Pv2TD(TAOS * taos, ARCHIVE_ELEMENT data)
                 syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
                 taos_free_result(result);
                 sql1 = "create stable if not exists pvstr(ts TIMESTAMP, val NCHAR(20), status NCHAR(20), severity NCHAR(20)) tags(groupId INT);";
-                checkResult(errno, sql1, sql);
+                checkResult(errno, sql1, sql); 
             }
             //printf("sql:%s\n", sql);
             //printf("valstr:%s\n", valstr);
@@ -270,7 +263,7 @@ int HB2TD(TAOS * taos, int callBackCounts, int nPvOn, int nPvOff)
         syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
         taos_free_result(result);
 
-    if(errno == -2147482752) {//"Database not specified or available"，建库并且建超级表，之后再执行一遍插入
+        if(errno == -2147482752) {//"Database not specified or available"，建库并且建超级表，之后再执行一遍插入
             printf("Database not specified or available\n");
             result = taos_query(Archiver->taos, "create database if not exists monitor;");
             taos_free_result(result);
@@ -350,7 +343,7 @@ void checkResult(int errno, char* sql1, char* sql2) {
     char sql[265];
     if(errno == -2147482752) {//"Database not specified or available"，建库并且建超级表，之后再执行一遍插入
         printf("Database not specified or available\n");
-        result = taos_query(Archiver->taos, "create database if not exists pvs precison 'ns';");
+        result = taos_query(Archiver->taos, "create database if not exists pvs precision 'ns';");
         taos_free_result(result);
         printf("Database pvs created!\n");
         result = taos_query(Archiver->taos, "use pvs;");
@@ -437,21 +430,7 @@ epicsUInt16 dbr2taosbind(TAOS_BIND *values, ARCHIVE_ELEMENT data)
 {
     epicsTimeStamp ts;
     ts = dbr2ts(data.data, data.type);
-    uint64_t  ts1 = ts.secPastEpoch;//uint类型 * 1000会溢出，先转为ulong型
-    uint64_t  ts2 = ts.nsec;
-
-    //secPastEpoch时间跟unix时间差了1970到1990的这2年，即7305 * 24 * 60 * 60 s 
-    //tdengine需要的时间戳以毫秒为单位的时间戳
-    uint64_t taos_ts;
-    taos_ts = (ts1 + 631152000)*1000000000 + ts2;
-    //taos_ts = (ts1 + 631152000)*1000;
-    //printf("tao_ts:%lu\n", taos_ts);
-    /*
-    if(strcmp(data.pvname, "zheng1:calc3") == 0) {
-        printf("pvname:%s, nanoseconds:%lu\n", data.pvname,ts2);
-        printf("tao_ts-------------------:%lu\n", taos_ts);
-    }
-    */
+    uint64_t taos_ts = epicsTime2int(ts);
                                                                                            
     char *status = dbr2status(data.data, data.type);                                         
     char *severity = dbr2sev(data.data, data.type);                                          
@@ -525,7 +504,7 @@ int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
         if (code != 0) {
             //database not exist
             printf("Database not specified or available\n");
-            result = taos_query(Archiver->taos, "create database if not exists pvs precison 'ns';");
+            result = taos_query(Archiver->taos, "create database if not exists pvs precision 'ns';");
             taos_free_result(result);
             printf("Database pvs created!\n");
             result = taos_query(Archiver->taos, "use pvs;");
@@ -559,7 +538,7 @@ int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
         checkErrorCode(stmt[DBR_TIME_STRING], code, "failed to excute taos_stmt_prepare\n");
         //stmt[DBR_TIME_FLOAT] = taos_stmt_init(taos);  
         code  = taos_stmt_prepare(stmt[DBR_TIME_FLOAT],SQL_FLOAT, 0);     
-        checkErrorCode(stmt[DBR_TIME_FLOAT], code, "failed 他to excute taos_stmt_prepare\n");
+        checkErrorCode(stmt[DBR_TIME_FLOAT], code, "failed to excute taos_stmt_prepare\n");
         code  = taos_stmt_prepare(stmt[DBR_TIME_DOUBLE],SQL_DOUBLE, 0);     
         checkErrorCode(stmt[DBR_TIME_DOUBLE], code, "failed to excute taos_stmt_prepare\n");
         code  = taos_stmt_prepare(stmt[DBR_TIME_CHAR],SQL_CHAR, 0);     
@@ -615,4 +594,75 @@ int Pv2TD_bind(TAOS * taos,ARCHIVE_ELEMENT data)
     }
     
     //taos_stmt_close(stmt[data.type]);
+}
+
+void PvArray2TD(TAOS * taos, unsigned long ts, char* pvname, long type, long count, char* status, char* sev)
+{
+    TAOS_RES* result;
+    char sql[256];
+    char* errstr;
+    sprintf(sql, "insert into s3ref.`%s` using s3ref.pvref tags(0) values (%lu, %lu, %lu, \'%s\', \'%s\'); \n ", pvname, ts, type, count, status, sev);
+
+    
+    result = taos_query(Archiver->taos, sql);
+    int errno = taos_errno(result);
+    if (result == NULL || errno != 0) {//如果taos_errno返回0说明执行成功
+        printf("failed to insert row: %s, reason: %s\n", sql, taos_errstr(result));
+        syslog(LOG_USER|LOG_INFO,"TDengine insert error\n");
+        taos_free_result(result);
+        if(errno == -2147482752) {//"Database not specified or available"，建库并且建超级表，之后再执行一遍插入
+            printf("Database not specified or available\n");
+            result = taos_query(Archiver->taos, "create database if not exists s3ref precision 'ns';");
+            taos_free_result(result);
+            printf("Database s3ref created!\n");
+            result = taos_query(Archiver->taos, "use s3ref;");
+            taos_free_result(result);
+            printf("Using database s3ref...\n");
+            result = taos_query(Archiver->taos, "create stable if not exists pvref(ts TIMESTAMP, type BIGINT, count BIGINT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);");
+            taos_free_result(result);
+            printf("Stable pvref created!\n");
+            result = taos_query(Archiver->taos, "use pvs;");
+            taos_free_result(result);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+            printf("error:%d\n", errno);
+            taos_free_result(result);
+        } 
+        if(errno == -2147482782) {//"Table does not exist"，有库没表，建超级表，之后再执行一次插入
+            printf("Table does not exist\n");
+            result = taos_query(Archiver->taos, "use s3ref;");
+            taos_free_result(result);
+            printf("Using database s3ref...\n");
+            result = taos_query(Archiver->taos, "create stable if not exists pvref(ts TIMESTAMP, type BIGINT, count BIGINT, status NCHAR(20), severity NCHAR(20)) tags(groupId INT);");
+            taos_free_result(result);
+            printf("Stable pvref created!\n");
+            result = taos_query(Archiver->taos, "use pvs;");
+            taos_free_result(result);
+            result = taos_query(Archiver->taos, sql);
+            errno = taos_errno(result);
+            printf("error:%d\n", errno);
+            taos_free_result(result);
+        }
+
+        //exit(1);
+        //通过返回的errono判断是否断线，如果断线则重新连接
+        //错误代码参照：https://www.bookstack.cn/read/TDengin-2.0-zh/9436ce1aea0b27a2.md
+        //“Unable to establish connection”：-2147483637
+        //“Disconnected from service”：-2147483117
+        if(errno == -2147483637 || errno == -2147483117) {
+        
+	        syslog(LOG_USER|LOG_INFO,"TDengine disconnected error\n");//将错误写入日志
+            while(Archiver->taos == NULL) {
+			    
+			    Archiver->taos = TaosConnect();//如果连接中断，重新连接
+                sleep(5);
+		    }     
+        }
+
+    } else {
+        #ifdef DEBUG
+        printf("insert row: %s result: success\n", sql);
+        #endif
+    }
+    taos_free_result(result);
 }

@@ -60,12 +60,14 @@ void parseFile_configFile(char  **fileData, int lines, struct ConfigInfo** info)
 	memset(myinfo, 0, sizeof(struct ConfigInfo) * lines);
     int i;
 	for (i = 0; i < lines; ++i) {
-		char* pos = strchr(fileData[i],':');
+		char* pos = strchr(fileData[i],'@');
 		//printf("---------------%s\n", pos);
 		strncpy(myinfo[i].key, fileData[i], pos - fileData[i]);
 		strncpy(myinfo[i].value, pos+1, strlen(pos + 1) -1);
+		#ifdef DEBUG
 		printf("-------configInfo[%d].key--------%s\n", i, myinfo[i].key);
 		printf("-------configInfo[%d].value--------%s\n", i, myinfo[i].value);
+		#endif
 	}
 	//释放fileData
     int j;
@@ -101,7 +103,7 @@ void destryInfo_configFile(struct ConfigInfo* info) {
  
 //判断当前行是否有效
 int isValid_configFile(const char* buf) {
-	if (buf[0] == '#' || buf[0] == '\n' || strchr(buf, ':') == NULL) {
+	if (buf[0] == '#' || buf[0] == '\n' || strchr(buf, '@') == NULL) {
 		return 0;
 	}
  

@@ -778,3 +778,23 @@ long val_long(const void *v, unsigned type, int index)
     long l = ((dbr_long_t*) val_ptr)[index];
 
 }
+
+void *dbr2parray (const void *value, unsigned type)
+{
+    void * parray;
+    parray= value + dbr_size[type] - dbr_value_size[type];
+    return parray;
+}
+
+unsigned long int epicsTime2int(epicsTimeStamp ts)
+{
+    unsigned long int  ts1 = ts.secPastEpoch;//uint类型 * 1000会溢出，先转为ulong型
+    unsigned long int  ts2 = ts.nsec;
+
+    //secPastEpoch时间跟unix时间差了1970到1990的这2年，即7305 * 24 * 60 * 60 s 
+    //tdengine需要的时间戳以毫秒为单位的时间戳
+    unsigned long int taos_ts;
+    taos_ts = (ts1 + 631152000)*1000000000 + ts2;
+
+    return taos_ts;
+}
