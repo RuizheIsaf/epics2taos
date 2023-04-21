@@ -27,15 +27,8 @@ ARCHIVER*  archive_initial()
     fifoInitial(archiver->ring_buffer,BUFF_LENGTH);    //初始化缓存
     printf("fifo initial\n");
 
-
-    //taos connect begin   by  ruizhe
-
-    // const char* host = "127.0.0.1";
-    // const char* user = "root";
-    // const char* passwd = "taosdata";
-    
-    
-    archiver->taos = TaosConnect();
+    archiver->taos = TaosConnect();//初始化taos
+    archiver->s3client = s3Client_init();//初始化AWS S3
     /*
     Archiver->stmt = taos_stmt_init(archiver->taos);
     const char *sql = "insert into ? using pv tags(0) values (?, ?, ?, ?);";
@@ -56,11 +49,12 @@ ARCHIVE_ERROR archive_pv(evargs eha)
 {
     ARCHIVE_ELEMENT newdata;
     strcpy(&newdata.pvname,ca_name(eha.chid));
+    //printf("pvname:%s\n", ca_name(eha.chid));
+    //printf("pvtype:%d\n", eha.type);
+    //printf("pvcount:%d\n", eha.count);
     newdata.type = eha.type;
     newdata.count = eha.count;
-
     memcpy(&newdata.data,eha.dbr,dbr_size_n(eha.type,eha.count));
-
    
     if(fifoWrite(Archiver->ring_buffer, newdata)==FIFO_OK)
     {
@@ -75,7 +69,7 @@ ARCHIVE_ERROR archive_pv(evargs eha)
     else
     {
         printf("fifo write error!\n");
-    }  
+    }    
 }
 
 
@@ -102,11 +96,17 @@ void archive_thread(ARCHIVER *parchiver)
             //char* errstr = taos_errstr(result);
             //printf("query sql: %s \n query result: %s \n", str, errstr);
             //taos_free_result(result);
-            要求：1. 数据库连接中断时可以自动重新连接
+            要求：1. 数据库连接中断时可以自动重新连接val2
                  2. 把时间戳、警报状态也一起存储.(具体获得方法展开dbr2str里查看）    
         //----------------------------------------------------*/
-            //Pv2TD(Archiver->taos, data);     
-            Pv2TD_bind(Archiver->taos, data);         
+            if(data.count <= 1) {
+                Pv2TD_bind(Archiver->taos, data);
+            } else {
+                //数组对象不插入taos，插入aws s3里面，但在taos里留条数据类型和数组长度的记录
+
+            }
+             
+
         }
         //usleep(10);
     }   
