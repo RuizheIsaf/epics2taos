@@ -112,7 +112,6 @@ extern int val_int(const void *v, unsigned type, int index);
 extern long val_long(const void *v, unsigned type, int index);
 extern void *dbr2parray (const void *value, unsigned type);
 extern unsigned long int epicsTime2int(epicsTimeStamp ts);
-
 /*
  * no additions below this endif
  */

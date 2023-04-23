@@ -12,6 +12,7 @@
 #include <aws/core/utils/logging/CRTLogSystem.h>
 #include <aws/core/utils/UUID.h>
 #include <sys/stat.h>
+#include <mutex>
 
 #include <aws/s3/S3Client.h>
 #include <aws/core/auth/AWSCredentialsProvider.h>
@@ -24,9 +25,6 @@
 #include <aws/s3/model/DeleteObjectRequest.h>
 #include <aws/s3/model/HeadBucketRequest.h>
 
-#include <stdio.h>
-#include <time.h>
-
 
 #ifdef __cplusplus
 
@@ -36,15 +34,16 @@ void aws_initAPI();
 void aws_shutdownAPI();
 void *s3Client_init();
 void s3_upload(void *s3client, void * dbr, char * pvname, size_t dbrsize, unsigned long time);
-void s3_upload_asyn(void *s3client, void * dbr, char * pvname, size_t dbrsize, unsigned long time);
 
 bool ListBuckets(const Aws::S3::S3Client& s3Client);
 bool CreateBucket(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::S3::Model::BucketLocationConstraint& locConstraint);
 bool DeleteBucket(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName);
 bool PutObjectFile(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey, const Aws::String& fileName);
 bool PutObjectDbr(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey, void *dbr, size_t dbrsize);
+bool PutObjectDbrAsync(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey, void *dbr, size_t dbrsize);
 void *GetObjectDbr(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey);
 bool DeleteObject(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey);
+void PutObjectAsyncFinished(const Aws::S3::S3Client *s3Client, const Aws::S3::Model::PutObjectRequest &request, const Aws::S3::Model::PutObjectOutcome &outcome, const std::shared_ptr<const Aws::Client::AsyncCallerContext> &context);
 
 void *getdbr(void *s3client, char *objectKey);
 #ifdef __cplusplus
