@@ -7,6 +7,7 @@ static const char ALLOCATION_TAG[] = "camonitor";
 Aws::SDKOptions options;
 Aws::String region;
 
+
 // List all Amazon Simple Storage Service (Amazon S3) buckets under the account.
 bool ListBuckets(const Aws::S3::S3Client& s3Client) {
 
@@ -148,6 +149,53 @@ bool PutObjectDbr(const Aws::S3::S3Client& s3Client, const Aws::String& bucketNa
         std::cout << "PutObject error:\n" << outcome.GetError() << std::endl << std::endl;
         return false;
     }
+
+}
+
+
+bool PutObjectDbr_asyn(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey, void *dbr, size_t dbrsize){
+    clock_t start_time, end_time;
+    double total_time;
+
+   
+    std::cout << "Putting object: \"" << objectKey << "\" to bucket: \"" << bucketName << "\" ..." << std::endl;
+    Aws::S3::Model::PutObjectRequest request;
+    request.WithBucket(bucketName).WithKey(objectKey);
+
+    //std::stringstream data_stream;
+    //data_stream.write(reinterpret_cast<char*>(dbr), dbrsize);
+    
+    auto data = Aws::MakeShared<Aws::StringStream>("PutObjectInputStream", std::stringstream::in | std::stringstream::out | std::stringstream::binary);
+    
+    data->write(static_cast<char*>(dbr), dbrsize);
+    
+
+    request.SetBody(data);
+
+    // Create and configure the context for the asynchronous put object request.
+    std::shared_ptr<Aws::Client::AsyncCallerContext> context =
+            Aws::MakeShared<Aws::Client::AsyncCallerContext>("PutObjectAllocationTag");
+    context->SetUUID(objectKey);
+
+
+    start_time = clock(); // 记录开始时间
+
+    //auto outcome = s3Client.PutObject(request);
+   s3Client.PutObjectAsync(request, PutObjectAsyncFinished, context);
+    
+    //if (outcome.IsSuccess()) {
+    //    std::cout << "Object added." << std::endl << std::endl;
+    //    end_time = clock(); // 记录结束时间
+
+     //   total_time = (double)(end_time - start_time) ; // 计算总执行时间
+    //    printf("function runtime %f secn\n", total_time);
+
+    //    return true;
+   // }
+    //else {
+     //   std::cout << "PutObject error:\n" << outcome.GetError() << std::endl << std::endl;
+    //    return false;
+    //}
 
 }
 
@@ -317,6 +365,7 @@ void s3_upload(void *s3Client, void * dbr, char * pvname, size_t dbrsize, unsign
     bool outcome = PutObjectDbr(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, object_key, dbr, dbrsize);
 }
 
+
 void s3_upload_asyn(void *s3Client, void * dbr, char * pvname, size_t dbrsize, unsigned long time) {
 
     //Aws::S3::Model::PutObjectRequest request;
@@ -338,7 +387,26 @@ void s3_upload_asyn(void *s3Client, void * dbr, char * pvname, size_t dbrsize, u
     //std::cout << object_key << std::endl << std::endl;
     //Aws::String bucket_name = "my-bucket";
 
-    bool outcome = PutObjectDbr(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, object_key, dbr, dbrsize);
+    bool outcome = PutObjectDbr_asyn(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, object_key, dbr, dbrsize);
+}
+
+
+
+void PutObjectAsyncFinished(const Aws::S3::S3Client *s3Client,
+                            const Aws::S3::Model::PutObjectRequest &request,
+                            const Aws::S3::Model::PutObjectOutcome &outcome,
+                            const std::shared_ptr<const Aws::Client::AsyncCallerContext> &context) {
+    if (outcome.IsSuccess()) {
+        std::cout << "Success: PutObjectAsyncFinished: Finished uploading '"
+                  << context->GetUUID() << "'." << std::endl;
+    }
+    else {
+        std::cerr << "Error: PutObjectAsyncFinished: " <<
+                  outcome.GetError().GetMessage() << std::endl;
+    }
+
+    // Unblock the thread that is waiting for this function to complete.
+    //AwsDoc::S3::upload_variable.notify_one();
 }
 
 
