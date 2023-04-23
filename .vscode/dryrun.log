@@ -1,6 +1,0 @@
-make --dry-run --always-make --keep-going --print-directory
-make: Entering directory `/home/weibin/epics2taos'
-make: Leaving directory `/home/weibin/epics2taos'
- 
-make: *** No targets specified and no makefile found.  Stop.
-

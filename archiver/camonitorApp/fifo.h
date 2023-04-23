@@ -39,7 +39,7 @@ typedef struct
 #define FIFO_ERROR 0
 #define FIFO_EMPTY 2
 #define FIFO_OVERFLOW 3
-#define BUFF_LENGTH 10000
+#define BUFF_LENGTH 1000
 
 //fifo_error fifoReadBulk(FIFO *fifo, int read_size, ARCHIVE_ELEMENT *readbuff);
 

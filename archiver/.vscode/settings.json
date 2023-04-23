@@ -33,9 +33,6 @@
         "vector": "c",
         "taos_interface.h": "c",
         "loadconfig.h": "c",
-<<<<<<< HEAD
-        "algorithm": "c"
-=======
         "putobjectrequest.h": "c",
         "aws.h": "c",
         "s3crtclient.h": "c",
@@ -85,8 +82,6 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "s3.h": "c"
->>>>>>> 3daad6208e4dad778c4e80e9023ca3908e45b173
     },
-    "C_Cpp.errorSquiggles": "Enabled",
-    "C_Cpp.dimInactiveRegions": true
+    "C_Cpp.errorSquiggles": "Enabled"
 }

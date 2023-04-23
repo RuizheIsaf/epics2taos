@@ -15,6 +15,7 @@
 #include <epicsString.h>
 
 
+
 #define VALID_DOUBLE_DIGITS 18  /* Max usable precision for a double */
 static unsigned long reqElems = 0;
 static unsigned long eventMask = DBE_VALUE | DBE_ALARM;   /* Event mask used */
@@ -109,14 +110,13 @@ static void eventCallback(struct event_handler_args eha)
             //fflush(stdout);
             //pv->value = NULL;archive_arraypv
         //archive_pv(eha); 
-        
+         
         if (eha.count > 1)
         {
             //void * pvalue = dbr2parray(eha.dbr,eha.type);
             size_t dbrsize = dbr_size_n(eha.type, eha.count);
             time_t t = time(NULL);
-            //long count  = eha.count;
-            void* dbr = eha.dbr;
+            
             char *pvname = pv->name;
             char *status = dbr2status(eha.dbr, eha.type);
             char *sev = dbr2sev(eha.dbr, eha.type);
@@ -128,12 +128,17 @@ static void eventCallback(struct event_handler_args eha)
             //s3_upload_asyn(Archiver->s3client, eha.dbr, pvname, dbrsize, taosts);
 
             PvArray2TD(Archiver->taos, taosts, pvname, eha.type, eha.count, status, sev);
-            
+            /*
+            int i = 0;
+            for (i = 0; i < 10; i++) {
+                //printf("test%d:%f\n", i, ((struct dbr_time_double*)(&eha.dbr[ 8 * i]))->value);//测试
+                
+            } 
+            */ 
         }  else {
-            archive_pv(eha); 
+            archive_pv(eha);
         }              
     } 
-
 }
 
 /*-----------------------
@@ -197,14 +202,14 @@ static void connectionCallback(struct connection_handler_args args)
         }
         ppv->isConnected = 1;
         
-        //PVStatus2TD(Archiver->taos, ppv, 1);//在线写1      
+        PVStatus2TD(Archiver->taos, ppv, 1);//在线写1      
     }
     else if ( args.op == CA_OP_CONN_DOWN ) {//连接断开时
         nConn--;
         ppv->status = ECA_DISCONN;
         ppv->isConnected = 0;
         print_time_val_sts(ppv, reqElems);
-        //PVStatus2TD(Archiver->taos, ppv, 0);//不在线写0
+        PVStatus2TD(Archiver->taos, ppv, 0);//不在线写0
     }
 }
 
