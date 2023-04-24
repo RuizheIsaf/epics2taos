@@ -10,6 +10,7 @@ std::mutex upload_mutex;
 std::condition_variable upload_variable;
 
 
+
 // List all Amazon Simple Storage Service (Amazon S3) buckets under the account.
 bool ListBuckets(const Aws::S3::S3Client& s3Client) {
 
@@ -145,7 +146,12 @@ bool PutObjectDbr(const Aws::S3::S3Client& s3Client, const Aws::String& bucketNa
 
 }
 
+
 bool PutObjectDbrAsync(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey, void *dbr, size_t dbrsize){
+    clock_t start_time, end_time;
+    double total_time;
+
+   
     std::cout << "Putting object: \"" << objectKey << "\" to bucket: \"" << bucketName << "\" ..." << std::endl;
 
     Aws::S3::Model::PutObjectRequest request;
@@ -161,32 +167,19 @@ bool PutObjectDbrAsync(const Aws::S3::S3Client& s3Client, const Aws::String& buc
 
     request.SetBody(data);
 
+
+    // Create and configure the context for the asynchronous put object request.
+
     std::shared_ptr<Aws::Client::AsyncCallerContext> context =
             Aws::MakeShared<Aws::Client::AsyncCallerContext>("PutObjectAllocationTag");
     context->SetUUID(objectKey);
 
-    s3Client.PutObjectAsync(request, PutObjectAsyncFinished, context);
+    start_time = clock(); // 记录开始时间
+
+   s3Client.PutObjectAsync(request, PutObjectAsyncFinished, context);
+
 
     return true;
-
-
-    // auto outcome = s3Client.PutObjectAsync(request, [](const Aws::S3::S3Client*, const Aws::S3::Model::PutObjectRequest&, const Aws::S3::Model::PutObjectOutcome&, const std::shared_ptr<const Aws::Client::AsyncCallerContext>&) {
-    //         if (outcome.IsSuccess()) {
-    //             std::cout << "Object uploaded successfully." << std::endl;
-    //         } else {
-    //             std::cout << "Error uploading object: " << outcome.GetError().GetMessage() << std::endl;
-    //         }
-    //     });
-
-    // //auto outcome = s3Client.PutObject(request);
-    // if (outcome.IsSuccess()) {
-    //     std::cout << "Object added." << std::endl << std::endl;
-    //     return true;
-    // }
-    // else {
-    //     std::cout << "PutObject error:\n" << outcome.GetError() << std::endl << std::endl;
-    //     return false;
-    // }
 
 }
 
@@ -333,6 +326,31 @@ void * s3Client_init(){
 
 void s3_upload(void *s3Client, void * dbr, char * pvname, size_t dbrsize, unsigned long time) {
 
+
+    //Aws::S3::Model::PutObjectRequest request;
+
+    //Aws::S3::Model::BucketLocationConstraint locConstraint = Aws::S3::Model::BucketLocationConstraintMapper::GetBucketLocationConstraintForName(region);
+
+    Aws::String bucket_name = "pvarray-bucket";
+
+    //Aws::S3::Model::HeadBucketRequest hbr;
+   // hbr.SetBucket(bucket_name);
+
+    //如果bucket不存在，先创建bucket
+    //if(!(*static_cast<Aws::S3::S3Client *>(s3Client)).HeadBucket(hbr).IsSuccess()){
+    //    CreateBucket(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, locConstraint);
+    //}    
+
+    Aws::String object_key;
+    object_key = pvname + std::to_string(time);
+    //std::cout << object_key << std::endl << std::endl;
+    //Aws::String bucket_name = "my-bucket";
+
+    bool outcome = PutObjectDbr(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, object_key, dbr, dbrsize);
+}
+
+
+void s3_upload_asyn(void *s3Client, void * dbr, char * pvname, size_t dbrsize, unsigned long time) {
     Aws::S3::Model::PutObjectRequest request;
 
     Aws::S3::Model::BucketLocationConstraint locConstraint = Aws::S3::Model::BucketLocationConstraintMapper::GetBucketLocationConstraintForName(region);
@@ -352,11 +370,12 @@ void s3_upload(void *s3Client, void * dbr, char * pvname, size_t dbrsize, unsign
     //std::cout << object_key << std::endl << std::endl;
     //Aws::String bucket_name = "my-bucket";
     std::unique_lock<std::mutex> lock(upload_mutex);
-    PutObjectDbrAsync(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, object_key, dbr, dbrsize);
+    bool outcome =PutObjectDbrAsync(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, object_key, dbr, dbrsize);
     std::cout << "main: Waiting for file upload attempt..." << std::endl << std::endl;
     upload_variable.wait(lock);
     std::cout << std::endl << "main: File upload attempt completed." << std::endl;
-    //bool outcome = PutObjectDbr(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, object_key, dbr, dbrsize);
+
+   // bool outcome = PutObjectDbrAsync(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, object_key, dbr, dbrsize);
 }
 
 void *getdbr(void *s3Client, char *objectKey){

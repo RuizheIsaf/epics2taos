@@ -24,6 +24,7 @@
 #include <aws/s3/model/GetObjectResult.h>
 #include <aws/s3/model/DeleteObjectRequest.h>
 #include <aws/s3/model/HeadBucketRequest.h>
+#include <mutex>
 
 
 #ifdef __cplusplus
@@ -39,6 +40,11 @@ bool ListBuckets(const Aws::S3::S3Client& s3Client);
 bool CreateBucket(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::S3::Model::BucketLocationConstraint& locConstraint);
 bool DeleteBucket(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName);
 bool PutObjectFile(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey, const Aws::String& fileName);
+
+void PutObjectAsyncFinished(const Aws::S3::S3Client *s3Client,
+                            const Aws::S3::Model::PutObjectRequest &request,
+                            const Aws::S3::Model::PutObjectOutcome &outcome,
+                            const std::shared_ptr<const Aws::Client::AsyncCallerContext> &context);
 bool PutObjectDbr(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey, void *dbr, size_t dbrsize);
 bool PutObjectDbrAsync(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey, void *dbr, size_t dbrsize);
 void *GetObjectDbr(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey);

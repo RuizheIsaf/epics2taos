@@ -21,9 +21,8 @@ caMonitor_LIBS  += aws-cpp-sdk-core
 caMonitor_LIBS  += aws-cpp-sdk-s3
 OPT_CFLAGS_YES += -g
 OPT_CXXFLAGS_YES += -g
-#OPT_CXXFLAGS_YES += -laws-cpp-sdk-core
-#OPT_CXXFLAGS_YES += -laws-cpp-sdk-s3-crt
-#OPT_CXXFLAGS_YES += -laws-cpp-sdk-s3
+OPT_CXXFLAGS_YES += -D_GLIBCXX_USE_CXX11_ABI=0
+
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
