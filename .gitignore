@@ -37,3 +37,7 @@
 #Configuration
 config.ini
 launch.json
+
+#archiver
+archiver/configure/
+archiver/bin
