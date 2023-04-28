@@ -152,7 +152,7 @@ bool PutObjectDbrAsync(const Aws::S3::S3Client& s3Client, const Aws::String& buc
     double total_time;
 
    
-    std::cout << "Putting object: \"" << objectKey << "\" to bucket: \"" << bucketName << "\" ..." << std::endl;
+    //std::cout << "Putting object: \"" << objectKey << "\" to bucket: \"" << bucketName << "\" ..." << std::endl;
 
     Aws::S3::Model::PutObjectRequest request;
     request.WithBucket(bucketName).WithKey(objectKey);
@@ -167,14 +167,14 @@ bool PutObjectDbrAsync(const Aws::S3::S3Client& s3Client, const Aws::String& buc
 
     request.SetBody(data);
 
-
+    free(dbr);
     // Create and configure the context for the asynchronous put object request.
 
-    std::shared_ptr<Aws::Client::AsyncCallerContext> context =
-            Aws::MakeShared<Aws::Client::AsyncCallerContext>("PutObjectAllocationTag");
-    context->SetUUID(objectKey);
+    std::shared_ptr<Aws::Client::ArchiveContext> context =
+            Aws::MakeShared<Aws::Client::ArchiveContext>("PutObjectAllocationTag");
+    //context->SetBuffPointer(dbr);
 
-    start_time = clock(); // 记录开始时间
+    //start_time = clock(); // 记录开始时间
 
    s3Client.PutObjectAsync(request, PutObjectAsyncFinished, context);
 
@@ -312,13 +312,22 @@ void * s3Client_init(){
 
     Aws::Client::ClientConfiguration cfg;
     cfg.endpointOverride = endpoint;
+   
     cfg.scheme = Aws::Http::Scheme::HTTP;
     cfg.verifySSL = false;
+    //-------------需要配置最大连接数和线程池大小。如果不配置最大线程数会导致线程数目不断增加，最终超过系统限制而崩溃
+    cfg.maxConnections = 25;
+    //cfg.enableEndpointDiscovery = true;
+    auto executor = Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>("S3Adapter.S3Client", 30);
+    cfg.executor = executor;
+    //----------------------------------------------------------
 
     Aws::Auth::AWSCredentials cred(ak,sk);
+
+    //Aws::Vector<Aws::String> endpointList = {"172.16.0.171:9000", "172.16.0.172:9000", "172.16.0.173:9000"};
     
     Aws::S3::S3Client *s3Client = new Aws::S3::S3Client(cred, cfg, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, true);
-    
+    //Aws::S3::S3Client *s3Client = new Aws::S3::S3Client(cfg, Aws::MakeShared<Aws::S3::RoundRobinLBStrategy>("s3-lb-strategy", endpointList));
     void *s3Client_ptr = s3Client;
     return s3Client_ptr; 
    
@@ -353,27 +362,27 @@ void s3_upload(void *s3Client, void * dbr, char * pvname, size_t dbrsize, unsign
 void s3_upload_asyn(void *s3Client, void * dbr, char * pvname, size_t dbrsize, unsigned long time) {
     Aws::S3::Model::PutObjectRequest request;
 
-    Aws::S3::Model::BucketLocationConstraint locConstraint = Aws::S3::Model::BucketLocationConstraintMapper::GetBucketLocationConstraintForName(region);
+   // Aws::S3::Model::BucketLocationConstraint locConstraint = Aws::S3::Model::BucketLocationConstraintMapper::GetBucketLocationConstraintForName(region);
 
     Aws::String bucket_name = "pvarray-bucket";
 
-    Aws::S3::Model::HeadBucketRequest hbr;
-    hbr.SetBucket(bucket_name);
+    //Aws::S3::Model::HeadBucketRequest hbr;
+    //hbr.SetBucket(bucket_name);
 
     //如果bucket不存在，先创建bucket
-    if(!(*static_cast<Aws::S3::S3Client *>(s3Client)).HeadBucket(hbr).IsSuccess()){
-        CreateBucket(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, locConstraint);
-    }    
+    //if(!(*static_cast<Aws::S3::S3Client *>(s3Client)).HeadBucket(hbr).IsSuccess()){
+     //   CreateBucket(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, locConstraint);
+    //}    
 
     Aws::String object_key;
     object_key = pvname + std::to_string(time);
     //std::cout << object_key << std::endl << std::endl;
     //Aws::String bucket_name = "my-bucket";
-    std::unique_lock<std::mutex> lock(upload_mutex);
+    //std::unique_lock<std::mutex> lock(upload_mutex);
     bool outcome =PutObjectDbrAsync(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, object_key, dbr, dbrsize);
-    std::cout << "main: Waiting for file upload attempt..." << std::endl << std::endl;
-    upload_variable.wait(lock);
-    std::cout << std::endl << "main: File upload attempt completed." << std::endl;
+    //std::cout << "main: Waiting for file upload attempt..." << std::endl << std::endl;
+    ///upload_variable.wait(lock);
+    //std::cout << std::endl << "main: File upload attempt completed." << std::endl;
 
    // bool outcome = PutObjectDbrAsync(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, object_key, dbr, dbrsize);
 }
@@ -390,14 +399,21 @@ void PutObjectAsyncFinished(const Aws::S3::S3Client *s3Client,
                             const Aws::S3::Model::PutObjectOutcome &outcome,
                             const std::shared_ptr<const Aws::Client::AsyncCallerContext> &context) {
     if (outcome.IsSuccess()) {
-        std::cout << "Success: PutObjectAsyncFinished: Finished uploading '"
-                  << context->GetUUID() << "'." << std::endl;
+       // std::cout << "Success: PutObjectAsyncFinished: Finished uploading '"
+        //          << context->GetUUID() << "'." << std::endl;
     }
     else {
         std::cerr << "Error: PutObjectAsyncFinished: " <<
                   outcome.GetError().GetMessage() << std::endl;
     }
+    //----------------------将父类指针转换为子类的指针-----------------------------------------------
+    Aws::Client::ArchiveContext* myContext = const_cast<Aws::Client::ArchiveContext*>(dynamic_cast<const Aws::Client::ArchiveContext*>(context.get()));
+    if(myContext==nullptr){
+        std::cout << "Error when casting pointer type!"<< std::endl;
+        return;
+    }
+    //myContext->FreeBuff();
 
     // Unblock the thread that is waiting for this function to complete.
-    upload_variable.notify_one();
+    //upload_variable.notify_one();
 }

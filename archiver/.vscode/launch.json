@@ -7,11 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/linux-x86_64/caMonitor",
             "args": [
-<<<<<<< HEAD
                 "${workspaceFolder}/bin/linux-x86_64/arraydata"
-=======
-                "${workspaceFolder}/bin/linux-x86_64/ioctest"
->>>>>>> 72cad37f818163b6aef787bba5f04a2eddf7d5f8
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
