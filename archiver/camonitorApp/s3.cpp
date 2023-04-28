@@ -167,7 +167,7 @@ bool PutObjectDbrAsync(const Aws::S3::S3Client& s3Client, const Aws::String& buc
 
     request.SetBody(data);
 
-    free(dbr);
+    //free(dbr);
     // Create and configure the context for the asynchronous put object request.
 
     std::shared_ptr<Aws::Client::ArchiveContext> context =

@@ -125,9 +125,9 @@ static void eventCallback(struct event_handler_args eha)
             //printf("pvname:%s\nstatus:%s\nseverity:%s\ntimestamps:%lu\n", pvname, status, severity, taosts);
 
             //s3_upload(Archiver->s3client, eha.dbr, pvname, dbrsize, taosts);
-            void *buff=malloc(dbrsize);
-            memcpy(buff,eha.dbr,dbrsize);
-            s3_upload_asyn(Archiver->s3client, buff, pvname, dbrsize, taosts);
+            //void *buff=malloc(dbrsize);
+            //memcpy(buff,eha.dbr,dbrsize);
+            s3_upload_asyn(Archiver->s3client, eha.dbr, pvname, dbrsize, taosts);
             PvArray2TD(Archiver->taos, taosts, pvname, eha.type, eha.count, status, sev);
             //free(buff);
             /*
