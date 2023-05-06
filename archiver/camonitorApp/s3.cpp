@@ -315,10 +315,15 @@ void * s3Client_init(){
    
     cfg.scheme = Aws::Http::Scheme::HTTP;
     cfg.verifySSL = false;
-    //-------------需要配置最大连接数和线程池大小。如果不配置最大线程数会导致线程数目不断增加，最终超过系统限制而崩溃
-    cfg.maxConnections = 25;
+
+    //-------------需要配置最大连接数和线程池大小。如果不用PooledThreadExecutor模式最大线程数会导致线程数目不断增加，最终超过系统限制而崩溃
+    cfg.maxConnections = 100;
     //cfg.enableEndpointDiscovery = true;
-    auto executor = Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>("S3Adapter.S3Client", 30);
+
+    //-------------不加下面这一行会内存泄漏！！----------------------------
+    Aws::Utils::Threading::OverflowPolicy policy =Aws::Utils::Threading::OverflowPolicy::REJECT_IMMEDIATELY;
+
+    auto executor = Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>("S3Adapter.S3Client", 50, policy);
     cfg.executor = executor;
     //----------------------------------------------------------
 
