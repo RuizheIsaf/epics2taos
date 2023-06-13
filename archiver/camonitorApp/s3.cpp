@@ -8,6 +8,7 @@ Aws::SDKOptions options;
 Aws::String region;
 std::mutex upload_mutex;
 std::condition_variable upload_variable;
+long time1;
 
 
 
@@ -35,7 +36,7 @@ bool ListBuckets(const Aws::S3::S3Client& s3Client) {
 }
 
 // Create an Amazon Simple Storage Service (Amazon S3) bucket.
-bool CreateBucket(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::S3::Model::BucketLocationConstraint& locConstraint) {
+bool CreateBucket(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName) {
 
     std::cout << "Creating bucket: \"" << bucketName << "\" ..." << std::endl;
 
@@ -43,13 +44,13 @@ bool CreateBucket(const Aws::S3::S3Client& s3Client, const Aws::String& bucketNa
     request.SetBucket(bucketName);
 
     //  If you don't specify an AWS Region, the bucket is created in the US East (N. Virginia) Region (us-east-1)
-    if (locConstraint != Aws::S3::Model::BucketLocationConstraint::us_east_1)
-    {
-        Aws::S3::Model::CreateBucketConfiguration bucket_config;
-        bucket_config.SetLocationConstraint(locConstraint);
+    // if (locConstraint != Aws::S3::Model::BucketLocationConstraint::us_east_1)
+    // {
+    //     Aws::S3::Model::CreateBucketConfiguration bucket_config;
+    //     bucket_config.SetLocationConstraint(locConstraint);
 
-        request.SetCreateBucketConfiguration(bucket_config);
-    }
+    //     request.SetCreateBucketConfiguration(bucket_config);
+    // }
 
     Aws::S3::Model::CreateBucketOutcome outcome = s3Client.CreateBucket(request);
 
@@ -368,16 +369,31 @@ void s3_upload_asyn(void *s3Client, void * dbr, char * pvname, size_t dbrsize, u
     Aws::S3::Model::PutObjectRequest request;
 
    // Aws::S3::Model::BucketLocationConstraint locConstraint = Aws::S3::Model::BucketLocationConstraintMapper::GetBucketLocationConstraintForName(region);
+    Aws::String bucket_name; 
+    
+    long unixts = time / 1000000000;
+    //全局变量time1在进程启动后第一次上传数据时赋值，time2在该值的基础上加86400，即一天的秒数
+    //如果最新的数据时间不超过time2，即为在同一天内的数据，上传到同一个bucket内；否则上传到新bucket，并更新time1
+    if(time1 == NULL) {
+        time1 = unixts;
 
-    Aws::String bucket_name = "pvarray-bucket";
+    }
+    long time2 = time1 + 86400;
+    if(unixts >= time2) {
+        bucket_name = "ts" + std::to_string(unixts);
+        time1 = unixts;
+    } else {
+        bucket_name = "ts" + std::to_string(time1);
+    }
+    //std::cout << "unixts" << unixts << std::endl << std::endl;
 
-    //Aws::S3::Model::HeadBucketRequest hbr;
-    //hbr.SetBucket(bucket_name);
+    Aws::S3::Model::HeadBucketRequest hbr;
+    hbr.SetBucket(bucket_name);
 
     //如果bucket不存在，先创建bucket
-    //if(!(*static_cast<Aws::S3::S3Client *>(s3Client)).HeadBucket(hbr).IsSuccess()){
-     //   CreateBucket(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name, locConstraint);
-    //}    
+    if(!(*static_cast<Aws::S3::S3Client *>(s3Client)).HeadBucket(hbr).IsSuccess()){
+       CreateBucket(*static_cast<Aws::S3::S3Client *>(s3Client), bucket_name);
+    }    
 
     Aws::String object_key;
     object_key = pvname + std::to_string(time);
