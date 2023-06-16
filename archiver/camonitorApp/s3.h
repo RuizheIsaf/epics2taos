@@ -74,7 +74,7 @@ void *s3Client_init();
 void s3_upload(void *s3client, void * dbr, char * pvname, size_t dbrsize, unsigned long time);
 void s3_upload_asyn(void *s3Client, void * dbr, char * pvname, size_t dbrsize, unsigned long time);
 bool ListBuckets(const Aws::S3::S3Client& s3Client);
-bool CreateBucket(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName);
+bool CreateBucket(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::S3::Model::BucketLocationConstraint& locConstraint);
 bool DeleteBucket(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName);
 bool PutObjectFile(const Aws::S3::S3Client& s3Client, const Aws::String& bucketName, const Aws::String& objectKey, const Aws::String& fileName);
 
